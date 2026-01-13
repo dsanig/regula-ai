@@ -9,7 +9,8 @@ import {
   Lock, 
   Unlock, 
   Eye,
-  Trash2
+  Trash2,
+  PenTool
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,7 @@ interface DocumentActionsMenuProps {
   onToggleLock?: () => void;
   onView?: () => void;
   onDelete?: () => void;
+  onSign?: () => void;
 }
 
 export function DocumentActionsMenu({
@@ -46,6 +48,7 @@ export function DocumentActionsMenu({
   onToggleLock,
   onView,
   onDelete,
+  onSign,
 }: DocumentActionsMenuProps) {
   return (
     <DropdownMenu>
@@ -76,6 +79,10 @@ export function DocumentActionsMenu({
         <DropdownMenuItem onClick={onDownload} className="cursor-pointer">
           <Download className="w-4 h-4 mr-2" />
           Descargar
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onSign} className="cursor-pointer">
+          <PenTool className="w-4 h-4 mr-2" />
+          Firmar con DNIe
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onShare} className="cursor-pointer">
           <Share2 className="w-4 h-4 mr-2" />
