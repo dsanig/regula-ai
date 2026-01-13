@@ -1,1 +1,12 @@
 project_id = "jmtksrykhfgjiaelstdn"
+
+[api]
+enabled = true
+port = 54321
+
+[auth]
+enabled = true
+site_url = "https://lovable.dev"
+
+[functions.chat]
+verify_jwt = false

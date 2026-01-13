@@ -6,7 +6,6 @@ import {
   Plus, 
   FolderOpen, 
   ChevronRight,
-  MoreVertical,
   CheckCircle,
   Clock,
   AlertCircle
@@ -14,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { DocumentActionsMenu } from "./DocumentActionsMenu";
+import { useToast } from "@/hooks/use-toast";
 
 interface Document {
   id: string;
@@ -98,6 +99,14 @@ const statusConfig = {
 export function DocumentsView() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const { toast } = useToast();
+
+  const handleAction = (action: string, docCode: string) => {
+    toast({
+      title: action,
+      description: `Acción "${action}" ejecutada para ${docCode}`,
+    });
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -209,9 +218,19 @@ export function DocumentsView() {
                           <span className="text-sm text-muted-foreground">{doc.lastUpdated}</span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
+                          <DocumentActionsMenu
+                            documentId={doc.id}
+                            isLocked={false}
+                            onView={() => handleAction("Ver", doc.code)}
+                            onEdit={() => handleAction("Editar", doc.code)}
+                            onViewHistory={() => handleAction("Historial", doc.code)}
+                            onViewOwners={() => handleAction("Propietarios", doc.code)}
+                            onDownload={() => handleAction("Descargar", doc.code)}
+                            onShare={() => handleAction("Compartir", doc.code)}
+                            onArchive={() => handleAction("Archivar", doc.code)}
+                            onToggleLock={() => handleAction("Bloquear/Desbloquear", doc.code)}
+                            onDelete={() => handleAction("Eliminar", doc.code)}
+                          />
                         </td>
                       </tr>
                     );
