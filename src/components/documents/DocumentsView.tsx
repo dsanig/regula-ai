@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { Fragment, useMemo, useRef, useState, useEffect } from "react";
 import {
   FileText,
   Search,
@@ -284,9 +284,13 @@ export function DocumentsView({
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [showAllDocuments, setShowAllDocuments] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
+  const [expandedDocumentId, setExpandedDocumentId] = useState<string | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isOwnersOpen, setIsOwnersOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -328,10 +332,12 @@ export function DocumentsView({
     });
   }, [searchQuery, filters]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredDocuments.length / itemsPerPage));
+  const effectiveItemsPerPage = showAllDocuments ? Math.max(filteredDocuments.length, 1) : itemsPerPage;
+  const totalPages = Math.max(1, Math.ceil(filteredDocuments.length / effectiveItemsPerPage));
+  const startItem = filteredDocuments.length === 0 ? 0 : (currentPage - 1) * effectiveItemsPerPage + 1;
   const paginatedDocuments = filteredDocuments.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    (currentPage - 1) * effectiveItemsPerPage,
+    currentPage * effectiveItemsPerPage
   );
 
   const handleAction = (action: string, docCode: string) => {
@@ -346,11 +352,24 @@ export function DocumentsView({
     setIsPreviewOpen(true);
   };
 
+  const handleToggleSummary = (docId: string) => {
+    setExpandedDocumentId((prev) => (prev === docId ? null : docId));
+  };
+
   const handleDownload = (doc: Document) => {
+    const content = `Documento: ${doc.title}\nCódigo: ${doc.code}\nVersión: ${doc.version}\nFormato: ${doc.format.toUpperCase()}\n`;
+    const mimeTypes: Record<Document["format"], string> = {
+      pdf: "application/pdf",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    };
+    const blob = new Blob([content], { type: mimeTypes[doc.format] });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = doc.fileUrl;
+    link.href = url;
     link.download = `${doc.code}.${doc.format}`;
     link.click();
+    URL.revokeObjectURL(url);
     handleAction("Descargar", doc.code);
   };
 
@@ -374,6 +393,16 @@ export function DocumentsView({
       category: categoryId,
     });
     setCurrentPage(1);
+  };
+
+  const handleOpenHistory = (doc: Document) => {
+    setSelectedDocument(doc);
+    setIsHistoryOpen(true);
+  };
+
+  const handleOpenOwners = (doc: Document) => {
+    setSelectedDocument(doc);
+    setIsOwnersOpen(true);
   };
 
   return (
@@ -441,10 +470,19 @@ export function DocumentsView({
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary/20">
               <div className="flex items-center gap-3">
                 <Label className="text-xs text-muted-foreground">Mostrar</Label>
-                <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                  setItemsPerPage(Number(value));
-                  setCurrentPage(1);
-                }}>
+                <Select
+                  value={showAllDocuments ? "all" : itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    if (value === "all") {
+                      setShowAllDocuments(true);
+                      setCurrentPage(1);
+                      return;
+                    }
+                    setShowAllDocuments(false);
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
                   <SelectTrigger className="w-24">
                     <SelectValue />
                   </SelectTrigger>
@@ -452,6 +490,8 @@ export function DocumentsView({
                     <SelectItem value="5">5</SelectItem>
                     <SelectItem value="10">10</SelectItem>
                     <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
                   </SelectContent>
                 </Select>
                 <span className="text-xs text-muted-foreground">
@@ -501,55 +541,98 @@ export function DocumentsView({
                     const status = statusConfig[doc.status];
                     const StatusIcon = status.icon;
                     return (
-                      <tr
-                        key={doc.id}
-                        className="hover:bg-secondary/30 transition-colors cursor-pointer"
-                        onClick={() => handleOpenPreview(doc)}
-                      >
-                        <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                          <Checkbox
-                            checked={selectedIds.includes(doc.id)}
-                            onCheckedChange={(checked) => toggleSelect(doc.id, Boolean(checked))}
-                            aria-label={`Seleccionar ${doc.code}`}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="font-mono text-sm text-foreground">{doc.code}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div>
-                            <p className="text-sm font-medium text-foreground">{doc.title}</p>
-                            <p className="text-xs text-muted-foreground">{doc.owner}</p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-sm text-foreground">v{doc.version}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={cn("inline-flex items-center gap-1.5 text-sm", status.class)}>
-                            <StatusIcon className="w-3.5 h-3.5" />
-                            {status.label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="text-sm text-muted-foreground">{doc.lastUpdated}</span>
-                        </td>
-                        <td className="px-4 py-3 text-right" onClick={(event) => event.stopPropagation()}>
-                          <DocumentActionsMenu
-                            documentId={doc.id}
-                            isLocked={false}
-                            onView={() => handleOpenPreview(doc)}
-                            onEdit={() => handleAction("Editar", doc.code)}
-                            onViewHistory={() => handleOpenHistory(doc)}
-                            onViewOwners={() => handleAction("Propietarios", doc.code)}
-                            onDownload={() => handleDownload(doc)}
-                            onShare={() => handleAction("Compartir", doc.code)}
-                            onArchive={() => handleAction("Archivar", doc.code)}
-                            onToggleLock={() => handleAction("Bloquear/Desbloquear", doc.code)}
-                            onDelete={() => handleAction("Eliminar", doc.code)}
-                          />
-                        </td>
-                      </tr>
+                      <Fragment key={doc.id}>
+                        <tr
+                          className="hover:bg-secondary/30 transition-colors cursor-pointer"
+                          onClick={() => handleToggleSummary(doc.id)}
+                        >
+                          <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedIds.includes(doc.id)}
+                              onCheckedChange={(checked) => toggleSelect(doc.id, Boolean(checked))}
+                              aria-label={`Seleccionar ${doc.code}`}
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-mono text-sm text-foreground">{doc.code}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div>
+                              <p className="text-sm font-medium text-foreground">{doc.title}</p>
+                              <p className="text-xs text-muted-foreground">{doc.owner}</p>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-sm text-foreground">v{doc.version}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={cn("inline-flex items-center gap-1.5 text-sm", status.class)}>
+                              <StatusIcon className="w-3.5 h-3.5" />
+                              {status.label}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-sm text-muted-foreground">{doc.lastUpdated}</span>
+                          </td>
+                          <td className="px-4 py-3 text-right" onClick={(event) => event.stopPropagation()}>
+                            <DocumentActionsMenu
+                              documentId={doc.id}
+                              isLocked={false}
+                              onView={() => handleOpenPreview(doc)}
+                              onEdit={() => handleAction("Editar", doc.code)}
+                              onViewHistory={() => handleOpenHistory(doc)}
+                              onViewOwners={() => handleOpenOwners(doc)}
+                              onDownload={() => handleDownload(doc)}
+                              onShare={() => handleAction("Compartir", doc.code)}
+                              onArchive={() => handleAction("Archivar", doc.code)}
+                              onToggleLock={() => handleAction("Bloquear/Desbloquear", doc.code)}
+                              onDelete={() => handleAction("Eliminar", doc.code)}
+                            />
+                          </td>
+                        </tr>
+                        {expandedDocumentId === doc.id && (
+                          <tr className="bg-secondary/20">
+                            <td colSpan={7} className="px-4 py-4">
+                              <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm text-muted-foreground">
+                                  <div>
+                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Formato</p>
+                                    <p className="text-sm font-medium text-foreground">{doc.format.toUpperCase()}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Páginas</p>
+                                    <p className="text-sm font-medium text-foreground">{doc.pageCount}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Autor original</p>
+                                    <p className="text-sm font-medium text-foreground">{doc.originalAuthor}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Versión actual</p>
+                                    <p className="text-sm font-medium text-foreground">v{doc.version}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Última modificación</p>
+                                    <p className="text-sm font-medium text-foreground">{doc.lastUpdated}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Modificado por</p>
+                                    <p className="text-sm font-medium text-foreground">{doc.lastModifiedBy}</p>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <Button variant="outline" onClick={() => handleOpenPreview(doc)}>
+                                    Vista previa
+                                  </Button>
+                                  <Button variant="accent" onClick={() => handleDownload(doc)}>
+                                    Descargar
+                                  </Button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -565,8 +648,8 @@ export function DocumentsView({
             {/* Pagination */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-border bg-secondary/20">
               <p className="text-sm text-muted-foreground">
-                Mostrando {(currentPage - 1) * itemsPerPage + 1}-
-                {Math.min(currentPage * itemsPerPage, filteredDocuments.length)} de {filteredDocuments.length} documentos
+                Mostrando {startItem}-
+                {Math.min(currentPage * effectiveItemsPerPage, filteredDocuments.length)} de {filteredDocuments.length} documentos
               </p>
               <div className="flex gap-1">
                 <Button
@@ -602,7 +685,7 @@ export function DocumentsView({
 
           {selectedDocument && (
             <div className="space-y-4">
-              <details className="rounded-lg border border-border p-4">
+              <details className="rounded-lg border border-border p-4" open>
                 <summary className="cursor-pointer font-semibold text-foreground">
                   Resumen del documento
                 </summary>
@@ -622,18 +705,88 @@ export function DocumentsView({
                 </div>
               </details>
 
-              <div className="bg-secondary/30 rounded-lg border border-border p-6 flex items-center justify-center text-center">
-                <div className="space-y-2">
-                  {selectedDocument.format === "pdf" && <FileText className="w-8 h-8 text-accent mx-auto" />}
-                  {selectedDocument.format === "docx" && <File className="w-8 h-8 text-accent mx-auto" />}
-                  {selectedDocument.format === "xlsx" && <FileSpreadsheet className="w-8 h-8 text-accent mx-auto" />}
-                  <p className="text-sm font-medium text-foreground">
-                    Vista previa {selectedDocument.format.toUpperCase()}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    La previsualización se renderiza dentro de QualiQ con los permisos actuales.
-                  </p>
+              <div className="bg-secondary/30 rounded-lg border border-border p-6">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Vista previa {selectedDocument.format.toUpperCase()}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Previsualización simulada dentro de QualiQ con permisos actuales.
+                    </p>
+                  </div>
+                  {selectedDocument.format === "pdf" && <FileText className="w-7 h-7 text-accent" />}
+                  {selectedDocument.format === "docx" && <File className="w-7 h-7 text-accent" />}
+                  {selectedDocument.format === "xlsx" && <FileSpreadsheet className="w-7 h-7 text-accent" />}
                 </div>
+
+                {selectedDocument.format === "pdf" && (
+                  <div className="mt-4 rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground space-y-2">
+                    <p className="font-medium text-foreground">Contenido destacado</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Alcance y objetivo del procedimiento.</li>
+                      <li>Lista de responsabilidades y aprobaciones.</li>
+                      <li>Sección de registros y control de cambios.</li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground">Previsualización tipo PDF (texto resumido).</p>
+                  </div>
+                )}
+
+                {selectedDocument.format === "docx" && (
+                  <div className="mt-4 rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground space-y-2">
+                    <p className="font-medium text-foreground">Secciones del documento</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="rounded-md border border-border p-3">
+                        <p className="text-xs uppercase text-muted-foreground">Capítulo 1</p>
+                        <p className="text-sm font-medium text-foreground">Introducción y contexto</p>
+                      </div>
+                      <div className="rounded-md border border-border p-3">
+                        <p className="text-xs uppercase text-muted-foreground">Capítulo 2</p>
+                        <p className="text-sm font-medium text-foreground">Procedimiento operativo</p>
+                      </div>
+                      <div className="rounded-md border border-border p-3">
+                        <p className="text-xs uppercase text-muted-foreground">Capítulo 3</p>
+                        <p className="text-sm font-medium text-foreground">Registros y anexos</p>
+                      </div>
+                      <div className="rounded-md border border-border p-3">
+                        <p className="text-xs uppercase text-muted-foreground">Capítulo 4</p>
+                        <p className="text-sm font-medium text-foreground">Control de versiones</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedDocument.format === "xlsx" && (
+                  <div className="mt-4 rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground mb-3">Hoja de indicadores clave</p>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-xs">
+                        <thead>
+                          <tr className="text-muted-foreground">
+                            <th className="text-left pb-2">Proceso</th>
+                            <th className="text-left pb-2">Responsable</th>
+                            <th className="text-left pb-2">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-foreground">
+                          <tr>
+                            <td className="py-1">Control de riesgos</td>
+                            <td className="py-1">Equipo QA</td>
+                            <td className="py-1">En revisión</td>
+                          </tr>
+                          <tr>
+                            <td className="py-1">Trazabilidad</td>
+                            <td className="py-1">Equipo RA</td>
+                            <td className="py-1">Aprobado</td>
+                          </tr>
+                          <tr>
+                            <td className="py-1">Gestión CAPA</td>
+                            <td className="py-1">Auditoría interna</td>
+                            <td className="py-1">Borrador</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -685,6 +838,9 @@ export function DocumentsView({
                       <SelectItem value="ai">Asignación por IA</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    La asignación automática consume créditos IA y puede sobreescribir categorías manuales.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Área / Categoría específica</Label>
@@ -722,7 +878,28 @@ export function DocumentsView({
                     <p className="text-xs text-muted-foreground">Sube el archivo de mapeo para asociar metadatos.</p>
                   </div>
                 </div>
-                <Input type="file" accept=".xlsx,.xls" />
+                <div className="flex flex-col sm:flex-row gap-3 items-start">
+                  <Input type="file" accept=".xlsx,.xls" />
+                  <Button variant="outline">Descargar plantilla</Button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Asignación por defecto</Label>
+                    <Select defaultValue="manual">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Asignación" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Manual</SelectItem>
+                        <SelectItem value="ai">IA</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Responsable del lote</Label>
+                    <Input placeholder="Equipo / responsable" />
+                  </div>
+                </div>
               </div>
 
               <div className="bg-secondary/30 border border-border rounded-lg p-4 space-y-4">
@@ -733,7 +910,13 @@ export function DocumentsView({
                     <p className="text-xs text-muted-foreground">Arrastra o selecciona una carpeta completa.</p>
                   </div>
                 </div>
-                <Input ref={folderInputRef} type="file" multiple />
+                <div className="flex flex-col sm:flex-row gap-3 items-start">
+                  <Input ref={folderInputRef} type="file" multiple />
+                  <Button variant="outline">Verificar estructura</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  La carpeta se relacionará con el Excel para asignar códigos, versiones y categorías.
+                </p>
               </div>
             </TabsContent>
           </Tabs>
@@ -753,6 +936,68 @@ export function DocumentsView({
               }}
             >
               Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Historial de versiones</DialogTitle>
+            <DialogDescription>
+              Cambios registrados para {selectedDocument?.code ?? "el documento seleccionado"}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <div className="border border-border rounded-lg p-3">
+              <p className="font-medium text-foreground">v{selectedDocument?.version ?? "3.0"}</p>
+              <p>Actualizado por {selectedDocument?.lastModifiedBy ?? "Equipo QA"} el {selectedDocument?.lastUpdated ?? "2024-01-05"}.</p>
+              <p>Cambios: revisión de secciones y anexos.</p>
+            </div>
+            <div className="border border-border rounded-lg p-3">
+              <p className="font-medium text-foreground">v2.4</p>
+              <p>Actualizado por Auditoría interna el 2023-11-18.</p>
+              <p>Cambios: ajustes de control de registros.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsHistoryOpen(false)}>
+              Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isOwnersOpen} onOpenChange={setIsOwnersOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Propietarios del documento</DialogTitle>
+            <DialogDescription>Responsables y aprobadores asignados.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <div className="flex items-center justify-between border border-border rounded-lg p-3">
+              <div>
+                <p className="font-medium text-foreground">{selectedDocument?.owner ?? "Equipo QA"}</p>
+                <p>Propietario principal</p>
+              </div>
+              <Button variant="outline" size="sm">
+                Cambiar
+              </Button>
+            </div>
+            <div className="flex items-center justify-between border border-border rounded-lg p-3">
+              <div>
+                <p className="font-medium text-foreground">Dirección Técnica</p>
+                <p>Aprobador</p>
+              </div>
+              <Button variant="outline" size="sm">
+                Editar
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsOwnersOpen(false)}>
+              Cerrar
             </Button>
           </DialogFooter>
         </DialogContent>
