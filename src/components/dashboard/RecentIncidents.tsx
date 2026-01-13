@@ -65,7 +65,12 @@ const priorityStyles = {
   low: "text-muted-foreground",
 };
 
-export function RecentIncidents() {
+interface RecentIncidentsProps {
+  onViewAll: () => void;
+  onSelectIncident: (incidentId: string) => void;
+}
+
+export function RecentIncidents({ onViewAll, onSelectIncident }: RecentIncidentsProps) {
   return (
     <div className="bg-card rounded-lg border border-border">
       <div className="flex items-center justify-between p-4 border-b border-border">
@@ -73,7 +78,7 @@ export function RecentIncidents() {
           <AlertTriangle className="w-5 h-5 text-muted-foreground" />
           <h3 className="font-semibold text-foreground">Incidencias Recientes</h3>
         </div>
-        <Button variant="ghost" size="sm" className="text-accent">
+        <Button variant="ghost" size="sm" className="text-accent" onClick={onViewAll}>
           Ver todas
           <ArrowRight className="w-4 h-4 ml-1" />
         </Button>
@@ -81,7 +86,11 @@ export function RecentIncidents() {
       
       <div className="divide-y divide-border">
         {mockIncidents.map((incident) => (
-          <div key={incident.id} className="p-4 hover:bg-secondary/50 transition-colors cursor-pointer">
+          <div
+            key={incident.id}
+            className="p-4 hover:bg-secondary/50 transition-colors cursor-pointer"
+            onClick={() => onSelectIncident(incident.id)}
+          >
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
