@@ -13,9 +13,12 @@ import {
 interface HeaderProps {
   title: string;
   subtitle?: string;
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+  searchPlaceholder?: string;
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, searchQuery, onSearchChange, searchPlaceholder }: HeaderProps) {
   const { user, signOut } = useAuth();
 
   return (
@@ -32,7 +35,9 @@ export function Header({ title, subtitle }: HeaderProps) {
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
-            placeholder="Buscar documentos, procesos..." 
+            placeholder={searchPlaceholder ?? "Buscar documentos, procesos..."}
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
             className="w-64 pl-9 bg-secondary border-0"
           />
         </div>
