@@ -70,7 +70,7 @@ const tiers = [
   {
     name: "Professional",
     subtitle: "Para equipos de calidad",
-    price: "299€",
+    price: "49,99€",
     period: "/mes",
     description: "Gestión completa de cumplimiento",
     features: [
@@ -88,7 +88,7 @@ const tiers = [
   {
     name: "Excellence",
     subtitle: "Para empresas reguladas",
-    price: "699€",
+    price: "149,99€",
     period: "/mes",
     description: "Analítica avanzada y IA premium",
     features: [

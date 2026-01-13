@@ -1,6 +1,14 @@
-import { Bell, Search, User, HelpCircle } from "lucide-react";
+import { Bell, Search, User, HelpCircle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NotificationsDropdown } from "@/components/notifications/NotificationsDropdown";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface HeaderProps {
   title: string;
@@ -8,6 +16,8 @@ interface HeaderProps {
 }
 
 export function Header({ title, subtitle }: HeaderProps) {
+  const { user, signOut } = useAuth();
+
   return (
     <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
       <div>
@@ -32,13 +42,23 @@ export function Header({ title, subtitle }: HeaderProps) {
           <Button variant="ghost" size="icon" className="text-muted-foreground">
             <HelpCircle className="w-5 h-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full" />
-          </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground">
-            <User className="w-5 h-5" />
-          </Button>
+          <NotificationsDropdown />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-muted-foreground">
+                <User className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-popover">
+              <DropdownMenuItem className="text-sm text-muted-foreground cursor-default">
+                {user?.email}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive">
+                <LogOut className="w-4 h-4 mr-2" />
+                Cerrar Sesión
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>
