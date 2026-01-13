@@ -228,8 +228,6 @@ export function IncidentsView({
   initialIncidentType,
 }: IncidentsViewProps) {
   const [incidentType, setIncidentType] = useState<Incident["type"]>(initialIncidentType ?? "incident");
-  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const { toast } = useToast();
 
   const stats = {
@@ -269,11 +267,6 @@ export function IncidentsView({
       ...filters,
       incidentArea: areaId,
     });
-  };
-
-  const handleOpenDetails = (incident: Incident) => {
-    setSelectedIncident(incident);
-    setIsDetailsOpen(true);
   };
 
   return (
@@ -623,107 +616,6 @@ export function IncidentsView({
               }}
             >
               Crear incidencia
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Detalle de la incidencia</DialogTitle>
-            <DialogDescription>
-              Visualiza el estado, responsables y documentación asociada.
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedIncident && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{selectedIncident.title}</p>
-                  <p className="text-xs text-muted-foreground">{selectedIncident.code}</p>
-                </div>
-                <div className="flex flex-wrap gap-2 justify-start sm:justify-end">
-                  <span className={cn("badge-status", priorityConfig[selectedIncident.priority].color)}>
-                    {priorityConfig[selectedIncident.priority].label}
-                  </span>
-                  <span className={cn("badge-status", typeConfig[selectedIncident.type].color)}>
-                    {typeConfig[selectedIncident.type].label}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-muted-foreground">
-                <div>
-                  <p className="font-medium text-foreground">Área</p>
-                  <p>{selectedIncident.area}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Responsable</p>
-                  <p>{selectedIncident.assignee}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Fecha límite</p>
-                  <p>{selectedIncident.dueDate}</p>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-border p-4 bg-secondary/20 space-y-2">
-                <p className="text-sm font-medium text-foreground">Seguimiento</p>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <div className="flex items-center justify-between">
-                    <span>Asignación inicial</span>
-                    <span>{selectedIncident.createdAt}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Última actualización</span>
-                    <span>2024-01-12</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Documentación final</span>
-                    <span>PNT-CAL-011 v2.4</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-border p-4">
-                <p className="text-sm font-medium text-foreground">Adjuntos</p>
-                <div className="mt-2 space-y-2">
-                  {[
-                    "Informe de inspección.pdf",
-                    "Registro de temperatura.xlsx",
-                    "Plan CAPA.docx",
-                  ].map((file) => (
-                    <div key={file} className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{file}</span>
-                      <Button variant="outline" size="sm">
-                        Descargar
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
-              Cerrar
-            </Button>
-            <Button
-              variant="accent"
-              onClick={() => {
-                if (selectedIncident) {
-                  toast({
-                    title: "Actualización enviada",
-                    description: `Se registró una actualización en ${selectedIncident.code}.`,
-                  });
-                }
-                setIsDetailsOpen(false);
-              }}
-            >
-              Registrar actualización
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -283,7 +283,6 @@ export function DocumentsView({
 }: DocumentsViewProps) {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -345,11 +344,6 @@ export function DocumentsView({
   const handleOpenPreview = (doc: Document) => {
     setSelectedDocument(doc);
     setIsPreviewOpen(true);
-  };
-
-  const handleOpenHistory = (doc: Document) => {
-    setSelectedDocument(doc);
-    setIsHistoryOpen(true);
   };
 
   const handleDownload = (doc: Document) => {
@@ -653,65 +647,6 @@ export function DocumentsView({
                 Descargar
               </Button>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Historial de versiones</DialogTitle>
-            <DialogDescription>
-              Revisa cambios anteriores y restaura si es necesario.
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedDocument && (
-            <div className="space-y-3">
-              {[
-                { version: selectedDocument.version, date: selectedDocument.lastUpdated, author: selectedDocument.lastModifiedBy, status: "Actual" },
-                { version: "2.5", date: "2023-10-12", author: selectedDocument.originalAuthor, status: "Aprobada" },
-                { version: "2.0", date: "2023-06-08", author: selectedDocument.originalAuthor, status: "Aprobada" },
-              ].map((entry, index) => (
-                <div
-                  key={`${entry.version}-${index}`}
-                  className="flex items-center justify-between p-3 rounded-lg border border-border"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-foreground">v{entry.version}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {entry.date} • {entry.author}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs bg-secondary px-2 py-1 rounded-full">{entry.status}</span>
-                    <Button variant="outline" size="sm">
-                      Ver cambios
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setIsHistoryOpen(false)}>
-              Cerrar
-            </Button>
-            <Button
-              variant="accent"
-              onClick={() => {
-                if (selectedDocument) {
-                  toast({
-                    title: "Versión restaurada",
-                    description: `Se restauró la versión seleccionada de ${selectedDocument.code}.`,
-                  });
-                }
-                setIsHistoryOpen(false);
-              }}
-            >
-              Restaurar versión
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
