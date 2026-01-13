@@ -7,9 +7,10 @@ import { PendingActions } from "./PendingActions";
 interface DashboardViewProps {
   onQuickAction: (action: string) => void;
   onViewPendingActions: () => void;
+  onViewIncidents: () => void;
 }
 
-export function DashboardView({ onQuickAction, onViewPendingActions }: DashboardViewProps) {
+export function DashboardView({ onQuickAction, onViewPendingActions, onViewIncidents }: DashboardViewProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Grid */}
@@ -48,7 +49,7 @@ export function DashboardView({ onQuickAction, onViewPendingActions }: Dashboard
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Incidents - Spans 2 columns */}
         <div className="lg:col-span-2">
-          <RecentIncidents />
+          <RecentIncidents onViewAll={onViewIncidents} onSelectIncident={onViewIncidents} />
         </div>
 
         {/* Compliance Score */}

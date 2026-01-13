@@ -108,10 +108,20 @@ const Index = () => {
     setActiveModule("pending-actions");
   };
 
+  const handleViewIncidents = () => {
+    setActiveModule("incidents");
+  };
+
   const renderModule = () => {
     switch (activeModule) {
       case "dashboard":
-        return <DashboardView onQuickAction={handleQuickAction} onViewPendingActions={handleViewPendingActions} />;
+        return (
+          <DashboardView
+            onQuickAction={handleQuickAction}
+            onViewPendingActions={handleViewPendingActions}
+            onViewIncidents={handleViewIncidents}
+          />
+        );
       case "documents":
         return (
           <DocumentsView
