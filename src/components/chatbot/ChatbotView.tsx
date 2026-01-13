@@ -1,32 +1,32 @@
-import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, FileText, Scale, Sparkles, Info, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Send, Bot, User, Trash2, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  references?: { type: "document" | "regulation"; title: string; code: string }[];
   timestamp: Date;
 }
 
-const initialMessages: Message[] = [
-  {
-    id: "1",
-    role: "assistant",
-    content: "Bienvenido al Asistente IA de QualiQ. Estoy aquí para ayudarle con consultas de cumplimiento normativo basadas en la documentación de su empresa y la legislación española y europea aplicable.\n\n¿En qué puedo ayudarle hoy?",
-    timestamp: new Date(),
-  },
-];
+interface ChatSession {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: string;
+  updatedAt: string;
+}
 
-const suggestedQuestions = [
-  "¿Qué PNT cubre el control de temperatura?",
-  "¿Cuál es el procedimiento para gestionar una no conformidad?",
-  "¿Qué dice la normativa española sobre etiquetado?",
-  "¿Está actualizado el Manual de Calidad?",
-];
+const initialAssistantMessage: Message = {
+  id: "welcome",
+  role: "assistant",
+  content:
+    "Bienvenido al Asistente IA de QualiQ. Estoy listo para ayudarte con consultas sobre tus procesos, incidencias y documentación de cumplimiento.",
+  timestamp: new Date(),
+};
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
@@ -113,26 +113,101 @@ async function streamChat({
         const parsed = JSON.parse(jsonStr);
         const content = parsed.choices?.[0]?.delta?.content as string | undefined;
         if (content) onDelta(content);
-      } catch { /* ignore partial leftovers */ }
+      } catch {
+        /* ignore partial leftovers */
+      }
     }
   }
 
   onDone();
 }
 
+const STORAGE_KEY = "qualia-chat-sessions";
+
+const getInitialChats = (): ChatSession[] => {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored) as ChatSession[];
+      return parsed.map((chat) => ({
+        ...chat,
+        messages: chat.messages.map((message) => ({
+          ...message,
+          timestamp: new Date(message.timestamp),
+        })),
+      }));
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
 export function ChatbotView() {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [chats, setChats] = useState<ChatSession[]>(() => {
+    const initialChats = getInitialChats();
+    if (initialChats.length > 0) return initialChats;
+    return [
+      {
+        id: "chat-1",
+        title: "Nuevo chat",
+        messages: [initialAssistantMessage],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+  });
+  const [activeChatId, setActiveChatId] = useState(() => chats[0]?.id ?? "chat-1");
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  const activeChat = useMemo(
+    () => chats.find((chat) => chat.id === activeChatId) ?? chats[0],
+    [chats, activeChatId]
+  );
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+  }, [chats]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [activeChat?.messages]);
+
+  const createNewChat = () => {
+    const newChat: ChatSession = {
+      id: `chat-${Date.now()}`,
+      title: "Nuevo chat",
+      messages: [initialAssistantMessage],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setChats((prev) => [newChat, ...prev]);
+    setActiveChatId(newChat.id);
+  };
+
+  const deleteChat = (chatId: string) => {
+    setChats((prev) => {
+      const next = prev.filter((chat) => chat.id !== chatId);
+      if (chatId === activeChatId) {
+        setActiveChatId(next[0]?.id ?? "");
+      }
+      return next.length > 0 ? next : [
+        {
+          id: "chat-1",
+          title: "Nuevo chat",
+          messages: [initialAssistantMessage],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+    });
+  };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !activeChat) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -141,34 +216,54 @@ export function ChatbotView() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const updatedChat: ChatSession = {
+      ...activeChat,
+      title: activeChat.title === "Nuevo chat" ? input.slice(0, 40) : activeChat.title,
+      messages: [...activeChat.messages, userMessage],
+      updatedAt: new Date().toISOString(),
+    };
+
+    setChats((prev) => prev.map((chat) => (chat.id === activeChat.id ? updatedChat : chat)));
     setInput("");
     setIsLoading(true);
 
     let assistantSoFar = "";
     const upsertAssistant = (nextChunk: string) => {
       assistantSoFar += nextChunk;
-      setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant" && last.id.startsWith("streaming-")) {
-          return prev.map((m, i) => 
-            i === prev.length - 1 ? { ...m, content: assistantSoFar } : m
-          );
-        }
-        return [...prev, { 
-          id: `streaming-${Date.now()}`, 
-          role: "assistant" as const, 
-          content: assistantSoFar,
-          timestamp: new Date(),
-        }];
-      });
+      setChats((prev) =>
+        prev.map((chat) => {
+          if (chat.id !== activeChat.id) return chat;
+          const last = chat.messages[chat.messages.length - 1];
+          if (last?.role === "assistant" && last.id.startsWith("streaming-")) {
+            return {
+              ...chat,
+              messages: chat.messages.map((message, index) =>
+                index === chat.messages.length - 1
+                  ? { ...message, content: assistantSoFar }
+                  : message
+              ),
+            };
+          }
+          return {
+            ...chat,
+            messages: [
+              ...chat.messages,
+              {
+                id: `streaming-${Date.now()}`,
+                role: "assistant",
+                content: assistantSoFar,
+                timestamp: new Date(),
+              },
+            ],
+          };
+        })
+      );
     };
 
     try {
-      const chatMessages = messages
-        .filter(m => m.id !== "1")
-        .concat(userMessage)
-        .map(m => ({ role: m.role, content: m.content }));
+      const chatMessages = updatedChat.messages
+        .filter((message) => message.id !== "welcome")
+        .map((message) => ({ role: message.role, content: message.content }));
 
       await streamChat({
         messages: chatMessages,
@@ -183,7 +278,7 @@ export function ChatbotView() {
           setIsLoading(false);
         },
       });
-    } catch (e) {
+    } catch {
       toast({
         title: "Error",
         description: "Error al conectar con el asistente. Por favor, inténtelo de nuevo.",
@@ -195,6 +290,56 @@ export function ChatbotView() {
 
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-6 animate-fade-in">
+      {/* Chat Sessions Sidebar */}
+      <div className="w-72 bg-card rounded-lg border border-border flex flex-col">
+        <div className="p-4 border-b border-border flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-foreground">Chats</h3>
+            <p className="text-xs text-muted-foreground">Historial persistente</p>
+          </div>
+          <Button variant="accent" size="icon" onClick={createNewChat}>
+            <Plus className="w-4 h-4" />
+          </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {chats.map((chat) => {
+            const lastMessage = chat.messages[chat.messages.length - 1];
+            return (
+              <div
+                key={chat.id}
+                className={cn(
+                  "group rounded-lg border p-3 cursor-pointer transition-colors",
+                  chat.id === activeChatId
+                    ? "border-accent bg-accent/10"
+                    : "border-border hover:bg-secondary/50"
+                )}
+                onClick={() => setActiveChatId(chat.id)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-foreground truncate">{chat.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {lastMessage?.content ?? "Sin mensajes"}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      deleteChat(chat.id);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Chat Area */}
       <div className="flex-1 flex flex-col bg-card rounded-lg border border-border overflow-hidden">
         {/* Chat Header */}
@@ -203,20 +348,19 @@ export function ChatbotView() {
             <Bot className="w-5 h-5 text-accent" />
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">Asistente de Cumplimiento IA</h3>
-            <p className="text-xs text-muted-foreground">Basado en documentación de empresa y normativa española</p>
+            <h3 className="font-semibold text-foreground">Asistente LLM de QualiQ</h3>
+            <p className="text-xs text-muted-foreground">
+              Sesión activa: {activeChat?.title ?? "Nuevo chat"}
+            </p>
           </div>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
+          {activeChat?.messages.map((message) => (
             <div
               key={message.id}
-              className={cn(
-                "flex gap-3",
-                message.role === "user" && "justify-end"
-              )}
+              className={cn("flex gap-3", message.role === "user" && "justify-end")}
             >
               {message.role === "assistant" && (
                 <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
@@ -226,32 +370,10 @@ export function ChatbotView() {
               <div
                 className={cn(
                   "max-w-[70%] rounded-lg px-4 py-3",
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary"
+                  message.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary"
                 )}
               >
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                
-                {message.references && message.references.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Referencias:</p>
-                    {message.references.map((ref, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2 text-xs bg-card/50 rounded px-2 py-1.5"
-                      >
-                        {ref.type === "document" ? (
-                          <FileText className="w-3 h-3 text-accent" />
-                        ) : (
-                          <Scale className="w-3 h-3 text-accent" />
-                        )}
-                        <span className="font-mono text-accent">{ref.code}</span>
-                        <span className="text-muted-foreground">{ref.title}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
               {message.role === "user" && (
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
@@ -261,7 +383,7 @@ export function ChatbotView() {
             </div>
           ))}
 
-          {isLoading && messages[messages.length - 1]?.role === "user" && (
+          {isLoading && activeChat?.messages[activeChat.messages.length - 1]?.role === "user" && (
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
                 <Bot className="w-4 h-4 text-accent" />
@@ -281,64 +403,23 @@ export function ChatbotView() {
         {/* Input Area */}
         <div className="p-4 border-t border-border">
           <div className="flex gap-2">
-            <input
-              type="text"
+            <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-              placeholder="Escriba su consulta de cumplimiento..."
+              placeholder="Escriba su consulta..."
               disabled={isLoading}
-              className="flex-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 disabled:opacity-50"
+              className="flex-1"
             />
-            <Button 
-              onClick={handleSend} 
-              variant="accent" 
-              size="icon" 
+            <Button
+              onClick={handleSend}
+              variant="accent"
+              size="icon"
               className="h-10 w-10"
               disabled={isLoading || !input.trim()}
             >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Sidebar */}
-      <div className="w-80 space-y-4 hidden xl:block">
-        {/* Suggested Questions */}
-        <div className="bg-card rounded-lg border border-border p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-accent" />
-            <h4 className="font-semibold text-foreground text-sm">Preguntas Sugeridas</h4>
-          </div>
-          <div className="space-y-2">
-            {suggestedQuestions.map((question, idx) => (
-              <button
-                key={idx}
-                onClick={() => setInput(question)}
-                disabled={isLoading}
-                className="w-full text-left text-sm text-muted-foreground hover:text-foreground p-2 rounded-lg hover:bg-secondary transition-colors disabled:opacity-50"
-              >
-                {question}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Info Card */}
-        <div className="bg-accent/5 rounded-lg border border-accent/20 p-4">
-          <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-semibold text-foreground text-sm mb-1">Sobre este asistente</h4>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Las respuestas se basan exclusivamente en la documentación de su empresa y la normativa española/europea aplicable. No se utilizan fuentes externas ni genéricas.
-              </p>
-            </div>
           </div>
         </div>
       </div>

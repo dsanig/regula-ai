@@ -55,7 +55,11 @@ const typeLabels = {
   capa: "CAPA",
 };
 
-export function PendingActions() {
+interface PendingActionsProps {
+  onViewAll: () => void;
+}
+
+export function PendingActions({ onViewAll }: PendingActionsProps) {
   return (
     <div className="bg-card rounded-lg border border-border p-6">
       <div className="flex items-center justify-between mb-4">
@@ -105,7 +109,7 @@ export function PendingActions() {
         })}
       </div>
 
-      <Button variant="outline" className="w-full mt-4">
+      <Button variant="outline" className="w-full mt-4" onClick={onViewAll}>
         Ver todas las acciones
       </Button>
     </div>
