@@ -228,6 +228,10 @@ export function IncidentsView({
   initialIncidentType,
 }: IncidentsViewProps) {
   const [incidentType, setIncidentType] = useState<Incident["type"]>(initialIncidentType ?? "incident");
+  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isCloseOpen, setIsCloseOpen] = useState(false);
   const { toast } = useToast();
 
   const stats = {
@@ -267,6 +271,21 @@ export function IncidentsView({
       ...filters,
       incidentArea: areaId,
     });
+  };
+
+  const handleOpenDetails = (incident: Incident) => {
+    setSelectedIncident(incident);
+    setIsDetailsOpen(true);
+  };
+
+  const handleAssign = (incident: Incident) => {
+    setSelectedIncident(incident);
+    setIsAssignOpen(true);
+  };
+
+  const handleClose = (incident: Incident) => {
+    setSelectedIncident(incident);
+    setIsCloseOpen(true);
   };
 
   return (
@@ -406,24 +425,9 @@ export function IncidentsView({
                     </td>
                     <td className="px-4 py-3 text-right">
                       <IncidentActionsMenu
-                        onEdit={() =>
-                          toast({
-                            title: "Editar incidencia",
-                            description: `Editar ${incident.code}`,
-                          })
-                        }
-                        onAssign={() =>
-                          toast({
-                            title: "Asignar responsable",
-                            description: `Asignar responsable para ${incident.code}`,
-                          })
-                        }
-                        onClose={() =>
-                          toast({
-                            title: "Cerrar incidencia",
-                            description: `Cerrar ${incident.code}`,
-                          })
-                        }
+                        onEdit={() => handleOpenDetails(incident)}
+                        onAssign={() => handleAssign(incident)}
+                        onClose={() => handleClose(incident)}
                       />
                     </td>
                   </tr>
@@ -513,6 +517,11 @@ export function IncidentsView({
               <Textarea placeholder="Detalles, impacto y contexto..." rows={4} />
             </div>
 
+            <div className="space-y-2">
+              <Label>Seguimiento / actualización</Label>
+              <Textarea placeholder="Añade avances, responsables y acuerdos..." rows={3} />
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Prioridad</Label>
@@ -580,6 +589,11 @@ export function IncidentsView({
             </div>
 
             <div className="space-y-2">
+              <Label>Solución final</Label>
+              <Textarea placeholder="Describe la solución aplicada y resultados." rows={3} />
+            </div>
+
+            <div className="space-y-2">
               <Label>Actualizar estado antes de cerrar</Label>
               <Select defaultValue="open">
                 <SelectTrigger>
@@ -616,6 +630,167 @@ export function IncidentsView({
               }}
             >
               Crear incidencia
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Detalle de incidencia</DialogTitle>
+            <DialogDescription>
+              Seguimiento tipo JIRA con historial, responsables y documentación asociada.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedIncident && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground">Código</p>
+                  <p className="font-medium text-foreground">{selectedIncident.code}</p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground">Área</p>
+                  <p className="font-medium text-foreground">{selectedIncident.area}</p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-xs text-muted-foreground">Responsable</p>
+                  <p className="font-medium text-foreground">{selectedIncident.assignee}</p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4 space-y-3">
+                <p className="text-sm font-medium text-foreground">Resumen</p>
+                <p className="text-sm text-muted-foreground">{selectedIncident.title}</p>
+                <div className="flex flex-wrap gap-2">
+                  <span className={cn("badge-status", typeConfig[selectedIncident.type].color)}>
+                    {typeConfig[selectedIncident.type].label}
+                  </span>
+                  <span className={cn("badge-status", priorityConfig[selectedIncident.priority].color)}>
+                    {priorityConfig[selectedIncident.priority].label}
+                  </span>
+                  <span className={cn("badge-status", statusConfig[selectedIncident.status].color)}>
+                    {statusConfig[selectedIncident.status].label}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4 space-y-3">
+                <p className="text-sm font-medium text-foreground">Seguimiento y actualizaciones</p>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <div className="rounded-md border border-border p-3">
+                    <p className="text-xs text-muted-foreground">2024-01-10 • María García</p>
+                    <p>Se notificó al responsable y se asignó prioridad crítica.</p>
+                  </div>
+                  <div className="rounded-md border border-border p-3">
+                    <p className="text-xs text-muted-foreground">2024-01-12 • Equipo QA</p>
+                    <p>Se actualizó el plan de acción y se adjuntaron evidencias.</p>
+                  </div>
+                  <div className="rounded-md border border-border p-3">
+                    <p className="text-xs text-muted-foreground">2024-01-15 • Responsable</p>
+                    <p>Se documentó la solución propuesta y la revisión final.</p>
+                  </div>
+                </div>
+                <Textarea placeholder="Añadir nueva actualización..." rows={3} />
+                <div className="flex justify-end">
+                  <Button variant="outline">Guardar actualización</Button>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border p-4 space-y-3">
+                <p className="text-sm font-medium text-foreground">Documentos vinculados</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm">
+                    Subir evidencia
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    Vincular PNT final
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Adjunta la solución final antes del cierre definitivo de la incidencia.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
+              Cerrar
+            </Button>
+            <Button variant="accent">Guardar cambios</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAssignOpen} onOpenChange={setIsAssignOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Asignar responsable</DialogTitle>
+            <DialogDescription>
+              Actualiza el responsable principal y notifica al equipo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Responsable</Label>
+              <Input placeholder="Nombre o equipo" defaultValue={selectedIncident?.assignee} />
+            </div>
+            <div className="space-y-2">
+              <Label>Mensaje de asignación</Label>
+              <Textarea placeholder="Instrucciones o contexto..." rows={3} />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsAssignOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="accent"
+              onClick={() => {
+                toast({
+                  title: "Responsable asignado",
+                  description: `Se asignó ${selectedIncident?.code ?? "la incidencia"} correctamente.`,
+                });
+                setIsAssignOpen(false);
+              }}
+            >
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCloseOpen} onOpenChange={setIsCloseOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cerrar incidencia</DialogTitle>
+            <DialogDescription>
+              Verifica que la solución final y documentación estén adjuntas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p>Incidencia: {selectedIncident?.code ?? "—"}</p>
+            <div className="space-y-2">
+              <Label>Resumen de cierre</Label>
+              <Textarea placeholder="Describe la solución final..." rows={3} />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsCloseOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="accent"
+              onClick={() => {
+                toast({
+                  title: "Incidencia cerrada",
+                  description: `Se cerró ${selectedIncident?.code ?? "la incidencia"} correctamente.`,
+                });
+                setIsCloseOpen(false);
+              }}
+            >
+              Confirmar cierre
             </Button>
           </DialogFooter>
         </DialogContent>

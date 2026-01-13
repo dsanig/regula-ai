@@ -8,14 +8,31 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const mockCompany = {
   name: "QualiQ Labs",
+  legalName: "QualiQ Labs S.L.",
   industry: "Calidad y cumplimiento",
   size: "250-500",
   address: "Calle Gran Vía 45, Madrid",
+  city: "Madrid",
+  postalCode: "28013",
+  country: "España",
   cif: "B-12345678",
+  vat: "ESB12345678",
   contact: "contacto@qualiq.ai",
+  phone: "+34 910 000 000",
+  dpo: "dpo@qualiq.ai",
+  complianceLead: "María García",
+  regulatoryScope: "ISO 9001, GMP, GDP",
 };
 
 const mockUsers = [
@@ -24,10 +41,18 @@ const mockUsers = [
   { id: "3", name: "Ana Martínez", email: "ana@qualiq.ai", role: "Viewer" },
 ];
 
+const mockInvoices = [
+  { id: "INV-2024-001", amount: "€1.200", status: "Pagada", date: "2024-01-01" },
+  { id: "INV-2023-012", amount: "€1.200", status: "Pagada", date: "2023-12-01" },
+  { id: "INV-2023-011", amount: "€1.200", status: "Pendiente", date: "2023-11-01" },
+];
+
 export function CompanyView() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("perfil");
+  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<(typeof mockUsers)[number] | null>(null);
   const isAdmin = Boolean(user?.email?.includes("admin") || user?.app_metadata?.role === "admin");
 
   if (!isAdmin) {
@@ -68,10 +93,22 @@ export function CompanyView() {
               <h3 className="font-semibold text-foreground">Perfil de la empresa</h3>
               <Button variant="outline">Editar perfil</Button>
             </div>
+            <div className="rounded-lg border border-border p-4 bg-secondary/20">
+              <p className="text-sm font-medium text-foreground">Flujo de administración</p>
+              <ol className="mt-2 text-xs text-muted-foreground list-decimal list-inside space-y-1">
+                <li>Completa la ficha de empresa y guarda los datos fiscales.</li>
+                <li>Configura usuarios y roles en la pestaña "Usuarios".</li>
+                <li>Revisa la facturación y genera facturas españolas si es necesario.</li>
+              </ol>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nombre</Label>
+                <Label>Nombre comercial</Label>
                 <Input defaultValue={mockCompany.name} />
+              </div>
+              <div className="space-y-2">
+                <Label>Razón social</Label>
+                <Input defaultValue={mockCompany.legalName} />
               </div>
               <div className="space-y-2">
                 <Label>Industria</Label>
@@ -95,13 +132,47 @@ export function CompanyView() {
                 <Label>CIF</Label>
                 <Input defaultValue={mockCompany.cif} />
               </div>
+              <div className="space-y-2">
+                <Label>IVA intracomunitario</Label>
+                <Input defaultValue={mockCompany.vat} />
+              </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Dirección</Label>
                 <Textarea defaultValue={mockCompany.address} rows={2} />
               </div>
               <div className="space-y-2">
+                <Label>Ciudad</Label>
+                <Input defaultValue={mockCompany.city} />
+              </div>
+              <div className="space-y-2">
+                <Label>Código postal</Label>
+                <Input defaultValue={mockCompany.postalCode} />
+              </div>
+              <div className="space-y-2">
+                <Label>País</Label>
+                <Input defaultValue={mockCompany.country} />
+              </div>
+              <div className="space-y-2">
                 <Label>Email de contacto</Label>
                 <Input defaultValue={mockCompany.contact} />
+              </div>
+              <div className="space-y-2">
+                <Label>Teléfono</Label>
+                <Input defaultValue={mockCompany.phone} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Delegado de protección de datos (DPO)</Label>
+                <Input defaultValue={mockCompany.dpo} />
+              </div>
+              <div className="space-y-2">
+                <Label>Responsable de cumplimiento</Label>
+                <Input defaultValue={mockCompany.complianceLead} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Ámbitos regulatorios</Label>
+                <Textarea defaultValue={mockCompany.regulatoryScope} rows={2} />
               </div>
             </div>
             <Button
@@ -125,7 +196,13 @@ export function CompanyView() {
                 <h3 className="font-semibold text-foreground">Usuarios</h3>
                 <p className="text-sm text-muted-foreground">Gestiona accesos, roles y licencias.</p>
               </div>
-              <Button variant="accent">
+              <Button
+                variant="accent"
+                onClick={() => {
+                  setEditingUser(null);
+                  setIsUserDialogOpen(true);
+                }}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Crear usuario
               </Button>
@@ -140,10 +217,27 @@ export function CompanyView() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs bg-secondary px-2 py-1 rounded-full">{userItem.role}</span>
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingUser(userItem);
+                        setIsUserDialogOpen(true);
+                      }}
+                    >
                       Editar
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-destructive">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() =>
+                        toast({
+                          title: "Usuario eliminado",
+                          description: `${userItem.name} ha sido eliminado.`,
+                        })
+                      }
+                    >
                       Eliminar
                     </Button>
                   </div>
@@ -173,6 +267,20 @@ export function CompanyView() {
                 <p className="text-lg font-semibold text-foreground mt-1">38 / 50</p>
               </div>
               <div className="bg-secondary/30 border border-border rounded-lg p-4">
+                <p className="text-xs text-muted-foreground">Coste mensual actual</p>
+                <p className="text-lg font-semibold text-foreground mt-1">€1.200</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-secondary/30 border border-border rounded-lg p-4">
+                <p className="text-xs text-muted-foreground">Estado de pago</p>
+                <p className="text-lg font-semibold text-foreground mt-1">Al día</p>
+              </div>
+              <div className="bg-secondary/30 border border-border rounded-lg p-4">
+                <p className="text-xs text-muted-foreground">Cobertura actual</p>
+                <p className="text-lg font-semibold text-foreground mt-1">Profesional</p>
+              </div>
+              <div className="bg-secondary/30 border border-border rounded-lg p-4">
                 <p className="text-xs text-muted-foreground">Próxima facturación</p>
                 <p className="text-lg font-semibold text-foreground mt-1">01/02/2024</p>
               </div>
@@ -181,6 +289,24 @@ export function CompanyView() {
             <div className="flex items-center gap-3">
               <FileText className="w-4 h-4 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Genera facturas en formato español con datos fiscales completos.</p>
+            </div>
+
+            <div className="rounded-lg border border-border p-4 space-y-3">
+              <p className="text-sm font-medium text-foreground">Histórico de facturas</p>
+              <div className="space-y-2">
+                {mockInvoices.map((invoice) => (
+                  <div key={invoice.id} className="flex items-center justify-between text-sm text-muted-foreground">
+                    <div>
+                      <p className="font-medium text-foreground">{invoice.id}</p>
+                      <p>{invoice.date}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-foreground">{invoice.amount}</p>
+                      <p>{invoice.status}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <Button
@@ -197,6 +323,57 @@ export function CompanyView() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingUser ? "Editar usuario" : "Crear usuario"}</DialogTitle>
+            <DialogDescription>
+              Gestiona usuarios asignados a la compañía. Los administradores pueden crear y eliminar cuentas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Nombre</Label>
+              <Input defaultValue={editingUser?.name} placeholder="Nombre y apellidos" />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input defaultValue={editingUser?.email} placeholder="usuario@empresa.com" />
+            </div>
+            <div className="space-y-2">
+              <Label>Rol</Label>
+              <Select defaultValue={editingUser?.role ?? "Viewer"}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un rol" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                  <SelectItem value="Editor">Editor</SelectItem>
+                  <SelectItem value="Viewer">Viewer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsUserDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="accent"
+              onClick={() => {
+                toast({
+                  title: editingUser ? "Usuario actualizado" : "Usuario creado",
+                  description: "Los cambios se han guardado correctamente.",
+                });
+                setIsUserDialogOpen(false);
+              }}
+            >
+              Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
