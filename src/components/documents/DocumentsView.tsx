@@ -49,6 +49,13 @@ interface Document {
   fileUrl: string;
 }
 
+interface SignedDocument {
+  file: File;
+  signedAt: string;
+  signerName: string;
+  reason?: string;
+}
+
 const mockDocuments: Document[] = [
   {
     id: "1",
@@ -291,6 +298,11 @@ export function DocumentsView({
   const [expandedDocumentId, setExpandedDocumentId] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isOwnersOpen, setIsOwnersOpen] = useState(false);
+  const [isSignOpen, setIsSignOpen] = useState(false);
+  const [signStatus, setSignStatus] = useState<"idle" | "waiting" | "completed">("idle");
+  const [signReason, setSignReason] = useState("");
+  const [signerName, setSignerName] = useState("");
+  const [signedDocuments, setSignedDocuments] = useState<Record<string, SignedDocument>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -357,19 +369,29 @@ export function DocumentsView({
   };
 
   const handleDownload = (doc: Document) => {
-    const content = `Documento: ${doc.title}\nCódigo: ${doc.code}\nVersión: ${doc.version}\nFormato: ${doc.format.toUpperCase()}\n`;
-    const mimeTypes: Record<Document["format"], string> = {
-      pdf: "application/pdf",
-      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    };
-    const blob = new Blob([content], { type: mimeTypes[doc.format] });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${doc.code}.${doc.format}`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const signedDoc = signedDocuments[doc.id];
+    if (signedDoc) {
+      const url = URL.createObjectURL(signedDoc.file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${doc.code}-firmado.${doc.format}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const content = `Documento: ${doc.title}\nCódigo: ${doc.code}\nVersión: ${doc.version}\nFormato: ${doc.format.toUpperCase()}\n`;
+      const mimeTypes: Record<Document["format"], string> = {
+        pdf: "application/pdf",
+        docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      };
+      const blob = new Blob([content], { type: mimeTypes[doc.format] });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${doc.code}.${doc.format}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
     handleAction("Descargar", doc.code);
   };
 
@@ -403,6 +425,76 @@ export function DocumentsView({
   const handleOpenOwners = (doc: Document) => {
     setSelectedDocument(doc);
     setIsOwnersOpen(true);
+  };
+
+  const handleOpenSign = (doc: Document) => {
+    setSelectedDocument(doc);
+    const existingSignature = signedDocuments[doc.id];
+    setSignStatus(existingSignature ? "completed" : "idle");
+    setSignReason(existingSignature?.reason ?? "");
+    setSignerName(existingSignature?.signerName ?? "");
+    setIsSignOpen(true);
+  };
+
+  const handleStartSigning = () => {
+    setSignStatus("waiting");
+    toast({
+      title: "Firma en proceso",
+      description: "Conecta el lector DNIe y autoriza la firma en AutoFirma.",
+    });
+  };
+
+  const handleCompleteSigning = (file: File) => {
+    if (!selectedDocument) {
+      return;
+    }
+    if (!signerName.trim()) {
+      toast({
+        title: "Falta el firmante",
+        description: "Indica el nombre del firmante antes de confirmar.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const signedAt = new Date().toISOString();
+    setSignedDocuments((prev) => ({
+      ...prev,
+      [selectedDocument.id]: {
+        file,
+        signedAt,
+        signerName: signerName.trim(),
+        reason: signReason.trim() || undefined,
+      },
+    }));
+    setSignStatus("completed");
+    toast({
+      title: "Documento firmado",
+      description: `${selectedDocument?.code ?? "El documento"} ha sido firmado con DNIe.`,
+    });
+  };
+
+  const handleSignedFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    handleCompleteSigning(file);
+  };
+
+  const handleDownloadForSigning = (doc: Document) => {
+    const content = `Documento: ${doc.title}\nCódigo: ${doc.code}\nVersión: ${doc.version}\nFormato: ${doc.format.toUpperCase()}\n`;
+    const mimeTypes: Record<Document["format"], string> = {
+      pdf: "application/pdf",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    };
+    const blob = new Blob([content], { type: mimeTypes[doc.format] });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${doc.code}-para-firmar.${doc.format}`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -583,6 +675,7 @@ export function DocumentsView({
                               onViewHistory={() => handleOpenHistory(doc)}
                               onViewOwners={() => handleOpenOwners(doc)}
                               onDownload={() => handleDownload(doc)}
+                              onSign={() => handleOpenSign(doc)}
                               onShare={() => handleAction("Compartir", doc.code)}
                               onArchive={() => handleAction("Archivar", doc.code)}
                               onToggleLock={() => handleAction("Bloquear/Desbloquear", doc.code)}
@@ -618,6 +711,12 @@ export function DocumentsView({
                                   <div>
                                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Modificado por</p>
                                     <p className="text-sm font-medium text-foreground">{doc.lastModifiedBy}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Firma</p>
+                                    <p className="text-sm font-medium text-foreground">
+                                      {signedDocuments[doc.id] ? "Firmado" : "Pendiente"}
+                                    </p>
                                   </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
@@ -701,6 +800,12 @@ export function DocumentsView({
                     <p>Versión actual: v{selectedDocument.version}</p>
                     <p>Última modificación: {selectedDocument.lastUpdated}</p>
                     <p>Modificado por: {selectedDocument.lastModifiedBy}</p>
+                    <p>
+                      Firma:{" "}
+                      {signedDocuments[selectedDocument.id]
+                        ? "Firmado con DNIe"
+                        : "Pendiente"}
+                    </p>
                   </div>
                 </div>
               </details>
@@ -796,10 +901,131 @@ export function DocumentsView({
               Cerrar
             </Button>
             {selectedDocument && (
-              <Button variant="accent" onClick={() => handleDownload(selectedDocument)}>
-                Descargar
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => handleOpenSign(selectedDocument)}>
+                  Firmar con DNIe
+                </Button>
+                <Button variant="accent" onClick={() => handleDownload(selectedDocument)}>
+                  Descargar
+                </Button>
+              </div>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isSignOpen} onOpenChange={setIsSignOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Firma electrónica con DNIe</DialogTitle>
+            <DialogDescription>
+              Firma electrónica cualificada integrada con el DNIe y AutoFirma.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5">
+            <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
+              <p className="text-sm font-medium text-foreground">Documento seleccionado</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-muted-foreground">
+                <div>
+                  <p className="font-medium text-foreground">{selectedDocument?.title ?? "Documento"}</p>
+                  <p>Código: {selectedDocument?.code ?? "N/D"}</p>
+                </div>
+                <div>
+                  <p>Versión: v{selectedDocument?.version ?? "N/D"}</p>
+                  <p>Responsable: {selectedDocument?.owner ?? "N/D"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-muted-foreground">
+              <div className="rounded-lg border border-border p-4 space-y-2">
+                <p className="font-medium text-foreground">Requisitos técnicos</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Lector compatible y DNIe insertado.</li>
+                  <li>AutoFirma instalada y en ejecución.</li>
+                  <li>Navegador con permisos de firma habilitados.</li>
+                </ul>
+              </div>
+              <div className="rounded-lg border border-border p-4 space-y-2">
+                <p className="font-medium text-foreground">Trazabilidad</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Hash del documento (SHA-256) almacenado.</li>
+                  <li>Marca temporal y certificado cualificado.</li>
+                  <li>Registro de auditoría en la biblioteca.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nombre del firmante</Label>
+                <Input
+                  placeholder="Nombre y apellidos"
+                  value={signerName}
+                  onChange={(event) => setSignerName(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Documento firmado (salida AutoFirma)</Label>
+                <Input type="file" accept=".pdf,.docx,.xlsx" onChange={handleSignedFileChange} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Motivo / comentario de firma</Label>
+              <Textarea
+                placeholder="Añade el motivo de la firma (opcional)"
+                rows={3}
+                value={signReason}
+                onChange={(event) => setSignReason(event.target.value)}
+              />
+            </div>
+
+            <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground space-y-2">
+              <p className="font-medium text-foreground">Estado de la firma</p>
+              {signStatus === "idle" && (
+                <p>
+                  Descarga el documento, fírmalo con AutoFirma y sube el archivo firmado para completar el proceso.
+                </p>
+              )}
+              {signStatus === "waiting" && (
+                <p>
+                  Esperando confirmación del DNIe... Autoriza la operación en AutoFirma y vuelve a esta pantalla.
+                </p>
+              )}
+              {signStatus === "completed" && (
+                <div className="space-y-1 text-success">
+                  <p>Firma completada. El documento queda registrado como firmado en la auditoría.</p>
+                  {selectedDocument && signedDocuments[selectedDocument.id] && (
+                    <p className="text-xs text-muted-foreground">
+                      Firmado por {signedDocuments[selectedDocument.id].signerName} el{" "}
+                      {new Date(signedDocuments[selectedDocument.id].signedAt).toLocaleString("es-ES")}.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsSignOpen(false)}>
+              Cerrar
+            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={handleStartSigning}
+                disabled={signStatus !== "idle"}
+              >
+                Iniciar firma
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => selectedDocument && handleDownloadForSigning(selectedDocument)}
+                disabled={!selectedDocument}
+              >
+                Descargar para firmar
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
