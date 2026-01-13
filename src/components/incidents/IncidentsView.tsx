@@ -373,7 +373,11 @@ export function IncidentsView({
                 const StatusIcon = status.icon;
 
                 return (
-                  <tr key={incident.id} className="hover:bg-secondary/30 transition-colors cursor-pointer">
+                  <tr
+                    key={incident.id}
+                    className="hover:bg-secondary/30 transition-colors cursor-pointer"
+                    onClick={() => handleOpenDetails(incident)}
+                  >
                     <td className="px-4 py-3">
                       <span className="font-mono text-sm text-foreground">{incident.code}</span>
                     </td>

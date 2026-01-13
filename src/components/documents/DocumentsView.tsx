@@ -540,7 +540,7 @@ export function DocumentsView({
                             isLocked={false}
                             onView={() => handleOpenPreview(doc)}
                             onEdit={() => handleAction("Editar", doc.code)}
-                            onViewHistory={() => handleAction("Historial", doc.code)}
+                            onViewHistory={() => handleOpenHistory(doc)}
                             onViewOwners={() => handleAction("Propietarios", doc.code)}
                             onDownload={() => handleDownload(doc)}
                             onShare={() => handleAction("Compartir", doc.code)}
