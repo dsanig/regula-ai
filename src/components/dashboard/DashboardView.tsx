@@ -4,7 +4,12 @@ import { RecentIncidents } from "./RecentIncidents";
 import { ComplianceScore } from "./ComplianceScore";
 import { PendingActions } from "./PendingActions";
 
-export function DashboardView() {
+interface DashboardViewProps {
+  onQuickAction: (action: string) => void;
+  onViewPendingActions: () => void;
+}
+
+export function DashboardView({ onQuickAction, onViewPendingActions }: DashboardViewProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Stats Grid */}
@@ -54,7 +59,7 @@ export function DashboardView() {
 
       {/* Bottom Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PendingActions />
+        <PendingActions onViewAll={onViewPendingActions} />
         
         {/* Quick Actions */}
         <div className="bg-card rounded-lg border border-border p-6">
@@ -68,6 +73,7 @@ export function DashboardView() {
             ].map((action) => (
               <button
                 key={action.label}
+                onClick={() => onQuickAction(action.label)}
                 className="flex items-center gap-3 p-4 rounded-lg border border-border hover:bg-secondary/50 transition-colors text-left"
               >
                 <action.icon className="w-5 h-5 text-accent" />

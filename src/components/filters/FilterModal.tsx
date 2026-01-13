@@ -1,0 +1,144 @@
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+export type FiltersState = {
+  category: string;
+  documentStatus: string;
+  incidentArea: string;
+  incidentStatus: string;
+  incidentPriority: string;
+};
+
+interface FilterModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  filters: FiltersState;
+  onFiltersChange: (filters: FiltersState) => void;
+}
+
+export function FilterModal({ open, onOpenChange, filters, onFiltersChange }: FilterModalProps) {
+  const updateFilter = (key: keyof FiltersState, value: string) => {
+    onFiltersChange({
+      ...filters,
+      [key]: value,
+    });
+  };
+
+  const handleReset = () => {
+    onFiltersChange({
+      category: "all",
+      documentStatus: "all",
+      incidentArea: "all",
+      incidentStatus: "all",
+      incidentPriority: "all",
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Crear filtros</DialogTitle>
+          <DialogDescription>
+            Define criterios de filtrado que se aplicarán en Documentos, Procesos e Incidencias.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-2">
+          <div className="space-y-2">
+            <Label>Categoría (Documentos/Procesos)</Label>
+            <Select value={filters.category} onValueChange={(value) => updateFilter("category", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona una categoría" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="calidad">Calidad</SelectItem>
+                <SelectItem value="produccion">Producción</SelectItem>
+                <SelectItem value="logistica">Logística</SelectItem>
+                <SelectItem value="rrhh">RRHH</SelectItem>
+                <SelectItem value="regulatory">Regulatory</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Estado del documento</Label>
+            <Select value={filters.documentStatus} onValueChange={(value) => updateFilter("documentStatus", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="approved">Aprobado</SelectItem>
+                <SelectItem value="review">En revisión</SelectItem>
+                <SelectItem value="draft">Borrador</SelectItem>
+                <SelectItem value="obsolete">Obsoleto</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Área (Incidencias)</Label>
+            <Select value={filters.incidentArea} onValueChange={(value) => updateFilter("incidentArea", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un área" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="almacen">Almacén</SelectItem>
+                <SelectItem value="produccion">Producción</SelectItem>
+                <SelectItem value="calidad">Calidad</SelectItem>
+                <SelectItem value="seguridad">Seguridad</SelectItem>
+                <SelectItem value="atencion">Atención Cliente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Estado (Incidencias)</Label>
+            <Select value={filters.incidentStatus} onValueChange={(value) => updateFilter("incidentStatus", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="open">Abierto</SelectItem>
+                <SelectItem value="in_progress">En progreso</SelectItem>
+                <SelectItem value="pending_approval">Pendiente aprobación</SelectItem>
+                <SelectItem value="closed">Cerrado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Prioridad (Incidencias)</Label>
+            <Select value={filters.incidentPriority} onValueChange={(value) => updateFilter("incidentPriority", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona prioridad" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="critical">Crítica</SelectItem>
+                <SelectItem value="high">Alta</SelectItem>
+                <SelectItem value="medium">Media</SelectItem>
+                <SelectItem value="low">Baja</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={handleReset}>
+            Restablecer filtros
+          </Button>
+          <Button variant="accent" onClick={() => onOpenChange(false)}>
+            Aplicar filtros
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

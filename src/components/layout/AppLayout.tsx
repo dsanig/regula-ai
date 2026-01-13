@@ -8,9 +8,21 @@ interface AppLayoutProps {
   onModuleChange: (module: string) => void;
   title: string;
   subtitle?: string;
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+  searchPlaceholder?: string;
 }
 
-export function AppLayout({ children, activeModule, onModuleChange, title, subtitle }: AppLayoutProps) {
+export function AppLayout({
+  children,
+  activeModule,
+  onModuleChange,
+  title,
+  subtitle,
+  searchQuery,
+  onSearchChange,
+  searchPlaceholder,
+}: AppLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
@@ -22,7 +34,13 @@ export function AppLayout({ children, activeModule, onModuleChange, title, subti
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title={title} subtitle={subtitle} />
+        <Header
+          title={title}
+          subtitle={subtitle}
+          searchQuery={searchQuery}
+          onSearchChange={onSearchChange}
+          searchPlaceholder={searchPlaceholder}
+        />
         <main className="flex-1 overflow-y-auto p-6">
           {children}
         </main>
