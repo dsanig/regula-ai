@@ -14,6 +14,122 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_findings: {
+        Row: {
+          affected_area: string | null
+          category: string
+          created_at: string
+          document_id: string | null
+          finding_description: string
+          finding_title: string
+          id: string
+          recommendation: string
+          regulation_reference: string | null
+          severity: string
+          simulation_id: string
+        }
+        Insert: {
+          affected_area?: string | null
+          category: string
+          created_at?: string
+          document_id?: string | null
+          finding_description: string
+          finding_title: string
+          id?: string
+          recommendation: string
+          regulation_reference?: string | null
+          severity: string
+          simulation_id: string
+        }
+        Update: {
+          affected_area?: string | null
+          category?: string
+          created_at?: string
+          document_id?: string | null
+          finding_description?: string
+          finding_title?: string
+          id?: string
+          recommendation?: string
+          regulation_reference?: string | null
+          severity?: string
+          simulation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_findings_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_findings_simulation_id_fkey"
+            columns: ["simulation_id"]
+            isOneToOne: false
+            referencedRelation: "audit_simulations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_simulations: {
+        Row: {
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          critical_findings: number | null
+          id: string
+          major_findings: number | null
+          minor_findings: number | null
+          risk_score: number | null
+          simulation_type: string
+          started_at: string | null
+          status: string
+          summary: string | null
+          total_findings: number | null
+        }
+        Insert: {
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          critical_findings?: number | null
+          id?: string
+          major_findings?: number | null
+          minor_findings?: number | null
+          risk_score?: number | null
+          simulation_type: string
+          started_at?: string | null
+          status?: string
+          summary?: string | null
+          total_findings?: number | null
+        }
+        Update: {
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          critical_findings?: number | null
+          id?: string
+          major_findings?: number | null
+          minor_findings?: number | null
+          risk_score?: number | null
+          simulation_type?: string
+          started_at?: string | null
+          status?: string
+          summary?: string | null
+          total_findings?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_simulations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           created_at: string
@@ -236,6 +352,110 @@ export type Database = {
         }
         Relationships: []
       }
+      pattern_detections: {
+        Row: {
+          company_id: string
+          correlation_strength: number | null
+          data_points: Json
+          detected_at: string
+          id: string
+          insight_id: string | null
+          pattern_type: string
+        }
+        Insert: {
+          company_id: string
+          correlation_strength?: number | null
+          data_points: Json
+          detected_at?: string
+          id?: string
+          insight_id?: string | null
+          pattern_type: string
+        }
+        Update: {
+          company_id?: string
+          correlation_strength?: number | null
+          data_points?: Json
+          detected_at?: string
+          id?: string
+          insight_id?: string | null
+          pattern_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pattern_detections_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pattern_detections_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "predictive_insights"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      predictive_insights: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          affected_areas: string[] | null
+          company_id: string
+          confidence_score: number | null
+          created_at: string
+          description: string
+          id: string
+          insight_type: string
+          is_acknowledged: boolean | null
+          pattern_details: Json | null
+          severity: string
+          suggested_actions: string[] | null
+          title: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          affected_areas?: string[] | null
+          company_id: string
+          confidence_score?: number | null
+          created_at?: string
+          description: string
+          id?: string
+          insight_type: string
+          is_acknowledged?: boolean | null
+          pattern_details?: Json | null
+          severity: string
+          suggested_actions?: string[] | null
+          title: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          affected_areas?: string[] | null
+          company_id?: string
+          confidence_score?: number | null
+          created_at?: string
+          description?: string
+          id?: string
+          insight_type?: string
+          is_acknowledged?: boolean | null
+          pattern_details?: Json | null
+          severity?: string
+          suggested_actions?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "predictive_insights_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -273,6 +493,140 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_answers: {
+        Row: {
+          answered_at: string
+          id: string
+          is_correct: boolean
+          question_id: string
+          selected_option_id: string
+          session_id: string
+        }
+        Insert: {
+          answered_at?: string
+          id?: string
+          is_correct: boolean
+          question_id: string
+          selected_option_id: string
+          session_id: string
+        }
+        Update: {
+          answered_at?: string
+          id?: string
+          is_correct?: boolean
+          question_id?: string
+          selected_option_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "training_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_answers_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "training_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_questions: {
+        Row: {
+          created_at: string
+          explanation: string | null
+          id: string
+          options: Json
+          question_number: number
+          question_text: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          options: Json
+          question_number: number
+          question_text: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          options?: Json
+          question_number?: number
+          question_text?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_questions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "training_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_sessions: {
+        Row: {
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          document_id: string
+          id: string
+          passed: boolean | null
+          score: number | null
+          started_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          document_id: string
+          id?: string
+          passed?: boolean | null
+          score?: number | null
+          started_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          document_id?: string
+          id?: string
+          passed?: boolean | null
+          score?: number | null
+          started_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_sessions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_sessions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
         ]

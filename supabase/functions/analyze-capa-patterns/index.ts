@@ -1,0 +1,168 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const SYSTEM_PROMPT = `Eres un experto en análisis predictivo para gestión de calidad en el sector farmacéutico y sanitario.
+
+Tu rol es detectar patrones en datos históricos de incidencias, desviaciones y CAPAs para predecir y prevenir problemas futuros.
+
+TIPOS DE PATRONES A DETECTAR:
+1. Correlaciones temporales (estacionalidad, turnos, días de la semana)
+2. Correlaciones de personal (rotación, formación, experiencia)
+3. Correlaciones de equipo/línea de producción
+4. Tendencias crecientes o decrecientes
+5. Clusters de incidencias por área o proceso
+
+IMPORTANTE:
+- Proporciona insights accionables, no solo estadísticas
+- Sugiere acciones preventivas concretas
+- Indica nivel de confianza en cada insight
+- Usa lenguaje profesional en español`;
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { companyId, incidentsData } = await req.json();
+    
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    console.log("Analyzing CAPA patterns for company:", companyId);
+
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+    // Format incidents data for analysis
+    const incidentsContext = incidentsData?.length > 0
+      ? JSON.stringify(incidentsData, null, 2)
+      : `[
+  {"type": "deviation", "area": "Línea 4", "shift": "B", "date": "2024-01-15", "description": "Desviación de temperatura"},
+  {"type": "deviation", "area": "Línea 4", "shift": "B", "date": "2024-01-22", "description": "Desviación de humedad"},
+  {"type": "nc", "area": "Almacén", "shift": "A", "date": "2024-01-18", "description": "Documentación incompleta"},
+  {"type": "deviation", "area": "Línea 4", "shift": "B", "date": "2024-02-05", "description": "Parámetros fuera de especificación"},
+  {"type": "capa", "area": "Línea 4", "shift": "B", "date": "2024-02-10", "description": "CAPA por desviaciones recurrentes"}
+]`;
+
+    const userPrompt = `Analiza los siguientes datos de incidencias y detecta patrones predictivos:
+
+DATOS DE INCIDENCIAS:
+${incidentsContext}
+
+Responde en formato JSON con esta estructura:
+{
+  "insights": [
+    {
+      "insight_type": "pattern|trend|risk|recommendation",
+      "severity": "high|medium|low",
+      "title": "Título del insight",
+      "description": "Descripción detallada del patrón detectado",
+      "pattern_details": {
+        "type": "shift_correlation|seasonal|equipment|personnel|process",
+        "correlation_strength": 0.85,
+        "data_points_analyzed": 15
+      },
+      "affected_areas": ["Línea 4", "Turno B"],
+      "suggested_actions": [
+        "Acción preventiva 1",
+        "Acción preventiva 2"
+      ],
+      "confidence_score": 85
+    }
+  ]
+}
+
+Genera entre 2 y 5 insights relevantes basados en los patrones detectados.`;
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+      throw new Error(`AI gateway error: ${response.status}`);
+    }
+
+    const aiResponse = await response.json();
+    const content = aiResponse.choices?.[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("No content in AI response");
+    }
+
+    console.log("AI response received, parsing insights...");
+
+    const parsed = JSON.parse(content);
+    const insights = parsed.insights || [];
+
+    // Insert insights and pattern detections
+    for (const insight of insights) {
+      const { data: insightData, error: insightError } = await supabase
+        .from("predictive_insights")
+        .insert({
+          company_id: companyId,
+          insight_type: insight.insight_type,
+          severity: insight.severity,
+          title: insight.title,
+          description: insight.description,
+          pattern_details: insight.pattern_details,
+          affected_areas: insight.affected_areas,
+          suggested_actions: insight.suggested_actions,
+          confidence_score: insight.confidence_score,
+        })
+        .select()
+        .single();
+
+      if (insightError) {
+        console.error("Error inserting insight:", insightError);
+        continue;
+      }
+
+      if (insight.pattern_details) {
+        await supabase.from("pattern_detections").insert({
+          company_id: companyId,
+          insight_id: insightData.id,
+          pattern_type: insight.pattern_details.type,
+          data_points: { analyzed: insight.pattern_details.data_points_analyzed },
+          correlation_strength: insight.pattern_details.correlation_strength,
+        });
+      }
+    }
+
+    console.log("CAPA pattern analysis completed with", insights.length, "insights");
+
+    return new Response(
+      JSON.stringify({ success: true, insightsCount: insights.length }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (e) {
+    console.error("CAPA pattern analysis error:", e);
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
