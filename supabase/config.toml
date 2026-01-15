@@ -10,3 +10,12 @@ site_url = "https://lovable.dev"
 
 [functions.chat]
 verify_jwt = false
+
+[functions.generate-training-exam]
+verify_jwt = false
+
+[functions.run-audit-simulation]
+verify_jwt = false
+
+[functions.analyze-capa-patterns]
+verify_jwt = false

@@ -8,7 +8,10 @@ import {
   Settings,
   ChevronLeft,
   Building2,
-  Shield
+  Shield,
+  GraduationCap,
+  ClipboardCheck,
+  TrendingUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,7 +28,9 @@ const navigationItems = [
   { id: "documents", label: "Documentos", icon: FileText },
   { id: "processes", label: "Procesos / PNT", icon: GitBranch },
   { id: "incidents", label: "Incidencias", icon: AlertTriangle },
-  { id: "analytics", label: "Analíticas", icon: BarChart3 },
+  { id: "training", label: "Formación", icon: GraduationCap },
+  { id: "audit-simulator", label: "Simulador Auditoría", icon: ClipboardCheck },
+  { id: "predictive-analytics", label: "Análisis Predictivo", icon: TrendingUp },
   { id: "chatbot", label: "Asistente IA", icon: MessageSquare },
 ];
 
