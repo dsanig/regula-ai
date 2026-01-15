@@ -58,7 +58,7 @@ export function Header({ title, subtitle, searchQuery, onSearchChange, searchPla
               <DropdownMenuItem className="text-sm text-muted-foreground cursor-default">
                 {user?.email}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive">
+              <DropdownMenuItem onSelect={() => signOut()} className="cursor-pointer text-destructive">
                 <LogOut className="w-4 h-4 mr-2" />
                 Cerrar Sesión
               </DropdownMenuItem>
