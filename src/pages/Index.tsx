@@ -38,6 +38,7 @@ const Index = () => {
   const [filters, setFilters] = useState<FiltersState>({
     category: "all",
     documentStatus: "all",
+    signatureStatus: "all",
     incidentArea: "all",
     incidentStatus: "all",
     incidentPriority: "all",

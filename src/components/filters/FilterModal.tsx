@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export type FiltersState = {
   category: string;
   documentStatus: string;
+  signatureStatus: string;
   incidentArea: string;
   incidentStatus: string;
   incidentPriority: string;
@@ -30,6 +31,7 @@ export function FilterModal({ open, onOpenChange, filters, onFiltersChange }: Fi
     onFiltersChange({
       category: "all",
       documentStatus: "all",
+      signatureStatus: "all",
       incidentArea: "all",
       incidentStatus: "all",
       incidentPriority: "all",
@@ -76,6 +78,21 @@ export function FilterModal({ open, onOpenChange, filters, onFiltersChange }: Fi
                 <SelectItem value="review">En revisión</SelectItem>
                 <SelectItem value="draft">Borrador</SelectItem>
                 <SelectItem value="obsolete">Obsoleto</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Estado de firma (Documentos)</Label>
+            <Select value={filters.signatureStatus} onValueChange={(value) => updateFilter("signatureStatus", value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona estado de firma" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="pending">Pendiente de firma</SelectItem>
+                <SelectItem value="signed">Firmado</SelectItem>
+                <SelectItem value="not_required">No requiere firma</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -340,9 +340,18 @@ export function DocumentsView({
 
       const matchesCategory = filters.category === "all" || doc.categoryId === filters.category;
       const matchesStatus = filters.documentStatus === "all" || doc.status === filters.documentStatus;
-      return matchesQuery && matchesCategory && matchesStatus;
+      
+      // Signature status filter
+      const isSigned = !!signedDocuments[doc.id];
+      const matchesSignature =
+        filters.signatureStatus === "all" ||
+        (filters.signatureStatus === "signed" && isSigned) ||
+        (filters.signatureStatus === "pending" && !isSigned && doc.status === "approved") ||
+        (filters.signatureStatus === "not_required" && doc.status !== "approved");
+
+      return matchesQuery && matchesCategory && matchesStatus && matchesSignature;
     });
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, signedDocuments]);
 
   const effectiveItemsPerPage = showAllDocuments ? Math.max(filteredDocuments.length, 1) : itemsPerPage;
   const totalPages = Math.max(1, Math.ceil(filteredDocuments.length / effectiveItemsPerPage));
