@@ -11,13 +11,18 @@ import { FilterModal, type FiltersState } from "@/components/filters/FilterModal
 import { PendingActionsView } from "@/components/dashboard/PendingActionsView";
 import { CompanyView } from "@/components/company/CompanyView";
 import { SettingsView } from "@/components/settings/SettingsView";
+import { TrainingExamView } from "@/components/training/TrainingExamView";
+import { AuditSimulatorView } from "@/components/audit/AuditSimulatorView";
+import { PredictiveAnalyticsView } from "@/components/analytics/PredictiveAnalyticsView";
 
 const moduleConfig: Record<string, { title: string; subtitle?: string }> = {
   dashboard: { title: "Panel de Control", subtitle: "Visión general del estado de cumplimiento" },
   documents: { title: "Gestión Documental", subtitle: "SOPs, PNTs y documentación de calidad" },
   processes: { title: "Procesos / PNT", subtitle: "Gestión de procedimientos normalizados" },
   incidents: { title: "Incidencias", subtitle: "No conformidades, desviaciones y CAPAs" },
-  analytics: { title: "Analíticas", subtitle: "Indicadores y métricas de cumplimiento" },
+  training: { title: "Formación Dinámica", subtitle: "Evaluación de comprensión de procedimientos" },
+  "audit-simulator": { title: "Simulador de Auditoría", subtitle: "Simulación de inspecciones FDA/EMA" },
+  "predictive-analytics": { title: "Análisis Predictivo CAPA", subtitle: "Detección de patrones y acciones preventivas" },
   chatbot: { title: "Asistente IA", subtitle: "Consultas basadas en documentación y normativa" },
   company: { title: "Empresa", subtitle: "Configuración y datos de la organización" },
   settings: { title: "Configuración", subtitle: "Preferencias y ajustes del sistema" },
@@ -162,12 +167,12 @@ const Index = () => {
         );
       case "chatbot":
         return <ChatbotView />;
-      case "analytics":
-        return (
-          <div className="flex items-center justify-center h-64 bg-card rounded-lg border border-border">
-            <p className="text-muted-foreground">Módulo de Analíticas - Disponible en plan Excellence</p>
-          </div>
-        );
+      case "training":
+        return <TrainingExamView />;
+      case "audit-simulator":
+        return <AuditSimulatorView />;
+      case "predictive-analytics":
+        return <PredictiveAnalyticsView />;
       case "company":
         return <CompanyView />;
       case "settings":
