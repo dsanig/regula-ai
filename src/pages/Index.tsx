@@ -7,6 +7,7 @@ import { DocumentsView } from "@/components/documents/DocumentsView";
 import { IncidentsView } from "@/components/incidents/IncidentsView";
 import { ChatbotView } from "@/components/chatbot/ChatbotView";
 import { useAuth } from "@/hooks/useAuth";
+import { useInactivityLogout } from "@/hooks/useInactivityLogout";
 import { FilterModal, type FiltersState } from "@/components/filters/FilterModal";
 import { PendingActionsView } from "@/components/dashboard/PendingActionsView";
 import { CompanyView } from "@/components/company/CompanyView";
@@ -32,7 +33,6 @@ const moduleConfig: Record<string, { title: string; subtitle?: string }> = {
 type IncidentType = "non-conformity" | "deviation" | "incident" | "complaint" | "capa";
 
 const Index = () => {
-  const [showApp, setShowApp] = useState(false);
   const [activeModule, setActiveModule] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<FiltersState>({
@@ -49,12 +49,9 @@ const Index = () => {
   const [incidentTypeSeed, setIncidentTypeSeed] = useState<IncidentType | undefined>(undefined);
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (user) {
-      setShowApp(true);
-    }
-  }, [user]);
+  
+  // Auto-logout after 10 minutes of inactivity
+  useInactivityLogout();
 
   const handleGetStarted = () => {
     navigate("/auth");
@@ -68,7 +65,7 @@ const Index = () => {
     );
   }
 
-  if (!showApp) {
+  if (!user) {
     return <LandingPage onGetStarted={handleGetStarted} />;
   }
 
