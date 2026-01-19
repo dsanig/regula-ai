@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LandingPage } from "@/components/landing/LandingPage";
 import { AppLayout } from "@/components/layout/AppLayout";
