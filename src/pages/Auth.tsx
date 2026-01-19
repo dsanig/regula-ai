@@ -148,31 +148,33 @@ export default function Auth() {
       return;
     }
 
+    // Basic client-side validation
+    if (demoCode.length > 50) {
+      setErrors({ demoCode: "Código inválido" });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Check if demo code exists and is valid
-      const { data: codeData, error: codeError } = await supabase
-        .from("demo_codes")
-        .select("*")
-        .eq("code", demoCode.trim())
-        .eq("is_used", false)
-        .single();
+      // Validate demo code via edge function (secure server-side validation)
+      const { data, error } = await supabase.functions.invoke("validate-demo-code", {
+        body: { code: demoCode.trim() },
+      });
 
-      if (codeError || !codeData) {
+      if (error) {
         toast({
-          title: "Código inválido",
-          description: "El código no existe o ya ha sido utilizado.",
+          title: "Error",
+          description: "Ha ocurrido un error al validar el código",
           variant: "destructive",
         });
         setIsLoading(false);
         return;
       }
 
-      // Check if code has expired
-      if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
+      if (!data?.valid) {
         toast({
-          title: "Código expirado",
-          description: "Este código de demo ha expirado.",
+          title: "Código inválido",
+          description: data?.error || "El código no existe, ya ha sido utilizado o ha expirado.",
           variant: "destructive",
         });
         setIsLoading(false);
@@ -231,6 +233,7 @@ export default function Auth() {
                   onChange={(e) => setDemoCode(e.target.value)}
                   placeholder="Ingrese su código"
                   className="mt-1"
+                  maxLength={50}
                 />
                 {errors.demoCode && (
                   <p className="text-destructive text-sm mt-1">{errors.demoCode}</p>
