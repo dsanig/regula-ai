@@ -29,19 +29,69 @@ serve(async (req) => {
   }
 
   try {
+    // Validate authentication
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "No autorizado. Se requiere autenticación." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    // Create client with user's token to verify authentication
+    const userSupabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await userSupabase.auth.getUser();
+    if (authError || !user) {
+      console.error("Auth error:", authError?.message);
+      return new Response(
+        JSON.stringify({ error: "Token inválido o expirado." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("CAPA pattern analysis request authenticated for user:", user.id);
+
     const { companyId, incidentsData } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log("Analyzing CAPA patterns for company:", companyId);
-
+    // Use service role client for database operations
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+    // Verify user belongs to the requested company
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("company_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return new Response(
+        JSON.stringify({ error: "Perfil de usuario no encontrado." }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (profile.company_id !== companyId) {
+      return new Response(
+        JSON.stringify({ error: "No tiene permiso para analizar datos de esta empresa." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("Analyzing CAPA patterns for company:", companyId);
 
     // Format incidents data for analysis
     const incidentsContext = incidentsData?.length > 0

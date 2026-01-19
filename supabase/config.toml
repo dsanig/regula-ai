@@ -19,3 +19,6 @@ verify_jwt = false
 
 [functions.analyze-capa-patterns]
 verify_jwt = false
+
+[functions.validate-demo-code]
+verify_jwt = false
