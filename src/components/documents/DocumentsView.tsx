@@ -58,200 +58,6 @@ interface SignedDocument {
   reason?: string;
 }
 
-const mockDocuments: Document[] = [
-  {
-    id: "1",
-    code: "PNT-CAL-001",
-    title: "Control de Documentos y Registros",
-    category: "Calidad",
-    categoryId: "calidad",
-    version: "3.0",
-    status: "approved",
-    lastUpdated: "2024-01-05",
-    owner: "María García",
-    pageCount: 24,
-    format: "pdf",
-    originalAuthor: "Sofía Ruiz",
-    lastModifiedBy: "María García",
-    fileUrl: "/docs/PNT-CAL-001.pdf",
-  },
-  {
-    id: "2",
-    code: "PNT-PRD-002",
-    title: "Fabricación y Control de Producto",
-    category: "Producción",
-    categoryId: "produccion",
-    version: "2.1",
-    status: "review",
-    lastUpdated: "2024-01-08",
-    owner: "Carlos López",
-    pageCount: 31,
-    format: "docx",
-    originalAuthor: "Carlos López",
-    lastModifiedBy: "Equipo QA",
-    fileUrl: "/docs/PNT-PRD-002.docx",
-  },
-  {
-    id: "3",
-    code: "PNT-ALM-003",
-    title: "Control de Almacén y Stock",
-    category: "Logística",
-    categoryId: "logistica",
-    version: "1.5",
-    status: "approved",
-    lastUpdated: "2023-12-15",
-    owner: "Ana Martínez",
-    pageCount: 18,
-    format: "pdf",
-    originalAuthor: "Ana Martínez",
-    lastModifiedBy: "Laura Ruiz",
-    fileUrl: "/docs/PNT-ALM-003.pdf",
-  },
-  {
-    id: "4",
-    code: "PNT-VAL-004",
-    title: "Validación de Procesos",
-    category: "Calidad",
-    categoryId: "calidad",
-    version: "4.0",
-    status: "draft",
-    lastUpdated: "2024-01-10",
-    owner: "Pedro Sánchez",
-    pageCount: 12,
-    format: "docx",
-    originalAuthor: "Pedro Sánchez",
-    lastModifiedBy: "Pedro Sánchez",
-    fileUrl: "/docs/PNT-VAL-004.docx",
-  },
-  {
-    id: "5",
-    code: "MAN-CAL-001",
-    title: "Manual de Calidad",
-    category: "Calidad",
-    categoryId: "calidad",
-    version: "5.2",
-    status: "approved",
-    lastUpdated: "2023-11-20",
-    owner: "Director Calidad",
-    pageCount: 88,
-    format: "pdf",
-    originalAuthor: "Dirección Técnica",
-    lastModifiedBy: "Director Calidad",
-    fileUrl: "/docs/MAN-CAL-001.pdf",
-  },
-  {
-    id: "6",
-    code: "PNT-RRH-010",
-    title: "Gestión de Formación y Competencias",
-    category: "RRHH",
-    categoryId: "rrhh",
-    version: "1.3",
-    status: "approved",
-    lastUpdated: "2023-12-12",
-    owner: "Lucía Vega",
-    pageCount: 16,
-    format: "pdf",
-    originalAuthor: "Lucía Vega",
-    lastModifiedBy: "Lucía Vega",
-    fileUrl: "/docs/PNT-RRH-010.pdf",
-  },
-  {
-    id: "7",
-    code: "PNT-REG-014",
-    title: "Revisión de Requisitos Regulatorios",
-    category: "Regulatory",
-    categoryId: "regulatory",
-    version: "2.0",
-    status: "review",
-    lastUpdated: "2024-01-02",
-    owner: "Equipo RA",
-    pageCount: 22,
-    format: "xlsx",
-    originalAuthor: "Equipo RA",
-    lastModifiedBy: "Equipo RA",
-    fileUrl: "/docs/PNT-REG-014.xlsx",
-  },
-  {
-    id: "8",
-    code: "PNT-PRD-005",
-    title: "Limpieza y Sanitización de Equipos",
-    category: "Producción",
-    categoryId: "produccion",
-    version: "3.2",
-    status: "approved",
-    lastUpdated: "2024-01-04",
-    owner: "Javier Soto",
-    pageCount: 14,
-    format: "pdf",
-    originalAuthor: "Javier Soto",
-    lastModifiedBy: "Javier Soto",
-    fileUrl: "/docs/PNT-PRD-005.pdf",
-  },
-  {
-    id: "9",
-    code: "PNT-LOG-008",
-    title: "Gestión de Transporte y Distribución",
-    category: "Logística",
-    categoryId: "logistica",
-    version: "1.0",
-    status: "draft",
-    lastUpdated: "2024-01-11",
-    owner: "Rosa Díaz",
-    pageCount: 9,
-    format: "docx",
-    originalAuthor: "Rosa Díaz",
-    lastModifiedBy: "Equipo Logística",
-    fileUrl: "/docs/PNT-LOG-008.docx",
-  },
-  {
-    id: "10",
-    code: "PNT-CAL-011",
-    title: "Gestión de CAPAs",
-    category: "Calidad",
-    categoryId: "calidad",
-    version: "2.4",
-    status: "approved",
-    lastUpdated: "2023-12-28",
-    owner: "Marta Romero",
-    pageCount: 26,
-    format: "pdf",
-    originalAuthor: "Marta Romero",
-    lastModifiedBy: "Marta Romero",
-    fileUrl: "/docs/PNT-CAL-011.pdf",
-  },
-  {
-    id: "11",
-    code: "PNT-PRD-006",
-    title: "Control de Cambios en Producción",
-    category: "Producción",
-    categoryId: "produccion",
-    version: "1.8",
-    status: "review",
-    lastUpdated: "2024-01-09",
-    owner: "Iván Morales",
-    pageCount: 20,
-    format: "xlsx",
-    originalAuthor: "Iván Morales",
-    lastModifiedBy: "Equipo QA",
-    fileUrl: "/docs/PNT-PRD-006.xlsx",
-  },
-  {
-    id: "12",
-    code: "PNT-CAL-015",
-    title: "Gestión de Riesgos de Calidad",
-    category: "Calidad",
-    categoryId: "calidad",
-    version: "1.2",
-    status: "approved",
-    lastUpdated: "2024-01-03",
-    owner: "Natalia Perez",
-    pageCount: 17,
-    format: "pdf",
-    originalAuthor: "Natalia Perez",
-    lastModifiedBy: "Natalia Perez",
-    fileUrl: "/docs/PNT-CAL-015.pdf",
-  },
-];
 
 const categoryOptions = [
   { id: "all", label: "Todos" },
@@ -351,7 +157,7 @@ export function DocumentsView({
     fetchDocuments();
   }, [fetchDocuments]);
 
-  const allDocuments = useMemo(() => [...dbDocuments, ...mockDocuments], [dbDocuments]);
+  const allDocuments = useMemo(() => [...dbDocuments], [dbDocuments]);
 
   const handleUploadDocument = async () => {
     if (!newDocFile || !newDocCode.trim() || !newDocTitle.trim()) {
@@ -480,7 +286,7 @@ export function DocumentsView({
     setExpandedDocumentId((prev) => (prev === docId ? null : docId));
   };
 
-  const handleDownload = (doc: Document) => {
+  const handleDownload = async (doc: Document) => {
     const signedDoc = signedDocuments[doc.id];
     if (signedDoc) {
       const url = URL.createObjectURL(signedDoc.file);
@@ -489,20 +295,23 @@ export function DocumentsView({
       link.download = `${doc.code}-firmado.${doc.format}`;
       link.click();
       URL.revokeObjectURL(url);
-    } else {
-      const content = `Documento: ${doc.title}\nCódigo: ${doc.code}\nVersión: ${doc.version}\nFormato: ${doc.format.toUpperCase()}\n`;
-      const mimeTypes: Record<Document["format"], string> = {
-        pdf: "application/pdf",
-        docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      };
-      const blob = new Blob([content], { type: mimeTypes[doc.format] });
-      const url = URL.createObjectURL(blob);
+    } else if (doc.fileUrl && !doc.fileUrl.startsWith("/docs/")) {
+      // Real file in storage — get a signed URL
+      const { data, error } = await supabase.storage
+        .from("documents")
+        .createSignedUrl(doc.fileUrl, 60);
+      if (error || !data?.signedUrl) {
+        toast({ title: "Error", description: "No se pudo generar el enlace de descarga.", variant: "destructive" });
+        return;
+      }
       const link = document.createElement("a");
-      link.href = url;
+      link.href = data.signedUrl;
       link.download = `${doc.code}.${doc.format}`;
+      link.target = "_blank";
       link.click();
-      URL.revokeObjectURL(url);
+    } else {
+      toast({ title: "Sin archivo", description: "Este documento no tiene un archivo asociado.", variant: "destructive" });
+      return;
     }
     handleAction("Descargar", doc.code);
   };
