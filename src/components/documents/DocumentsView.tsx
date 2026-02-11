@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, useState, useEffect } from "react";
+import { Fragment, useMemo, useRef, useState, useEffect, useCallback } from "react";
 import {
   FileText,
   Search,
@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { DocumentActionsMenu } from "./DocumentActionsMenu";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -304,6 +306,107 @@ export function DocumentsView({
   const [signerName, setSignerName] = useState("");
   const [signedDocuments, setSignedDocuments] = useState<Record<string, SignedDocument>>({});
   const { toast } = useToast();
+  const { user, profile } = useAuth();
+
+  // New document form state
+  const [newDocCode, setNewDocCode] = useState("");
+  const [newDocTitle, setNewDocTitle] = useState("");
+  const [newDocCategory, setNewDocCategory] = useState("calidad");
+  const [newDocDescription, setNewDocDescription] = useState("");
+  const [newDocFile, setNewDocFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Real documents from database
+  const [dbDocuments, setDbDocuments] = useState<Document[]>([]);
+
+  const fetchDocuments = useCallback(async () => {
+    if (!profile?.company_id) return;
+    const { data, error } = await supabase
+      .from("documents")
+      .select("*")
+      .eq("company_id", profile.company_id)
+      .order("created_at", { ascending: false });
+    if (!error && data) {
+      const mapped: Document[] = data.map((d) => ({
+        id: d.id,
+        code: d.code,
+        title: d.title,
+        category: d.category,
+        categoryId: d.category.toLowerCase().replace(/ó/g, "o").replace(/í/g, "i"),
+        version: String(d.version) + ".0",
+        status: d.status as Document["status"],
+        lastUpdated: new Date(d.updated_at).toISOString().split("T")[0],
+        owner: d.owner_id,
+        pageCount: 0,
+        format: (d.file_type || "pdf") as Document["format"],
+        originalAuthor: d.owner_id,
+        lastModifiedBy: d.owner_id,
+        fileUrl: d.file_url,
+      }));
+      setDbDocuments(mapped);
+    }
+  }, [profile?.company_id]);
+
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
+
+  const allDocuments = useMemo(() => [...dbDocuments, ...mockDocuments], [dbDocuments]);
+
+  const handleUploadDocument = async () => {
+    if (!newDocFile || !newDocCode.trim() || !newDocTitle.trim()) {
+      toast({ title: "Campos requeridos", description: "Completa código, título y archivo.", variant: "destructive" });
+      return;
+    }
+    if (!user || !profile?.company_id) {
+      toast({ title: "Error", description: "Debes iniciar sesión.", variant: "destructive" });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const fileExt = newDocFile.name.split(".").pop() || "pdf";
+      const filePath = `${profile.company_id}/${crypto.randomUUID()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("documents")
+        .upload(filePath, newDocFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("documents")
+        .getPublicUrl(filePath);
+
+      const fileUrl = urlData.publicUrl;
+
+      const { error: insertError } = await supabase.from("documents").insert({
+        code: newDocCode.trim(),
+        title: newDocTitle.trim(),
+        category: newDocCategory.charAt(0).toUpperCase() + newDocCategory.slice(1),
+        company_id: profile.company_id,
+        owner_id: user.id,
+        file_type: fileExt,
+        file_url: filePath,
+        status: "draft" as const,
+      });
+
+      if (insertError) throw insertError;
+
+      toast({ title: "Documento creado", description: "El documento se ha subido correctamente." });
+      onNewDocumentOpenChange(false);
+      setNewDocCode("");
+      setNewDocTitle("");
+      setNewDocCategory("calidad");
+      setNewDocDescription("");
+      setNewDocFile(null);
+      fetchDocuments();
+    } catch (err: any) {
+      toast({ title: "Error al subir", description: err.message || "No se pudo subir el documento.", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   useEffect(() => {
     if (folderInputRef.current) {
@@ -313,24 +416,24 @@ export function DocumentsView({
   }, []);
 
   const categoryCounts = useMemo(() => {
-    return mockDocuments.reduce((acc, doc) => {
+    return allDocuments.reduce((acc, doc) => {
       acc[doc.categoryId] = (acc[doc.categoryId] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-  }, []);
+  }, [allDocuments]);
 
   const categories = useMemo(
     () =>
       categoryOptions.map((cat) => ({
         ...cat,
-        count: cat.id === "all" ? mockDocuments.length : categoryCounts[cat.id] ?? 0,
+        count: cat.id === "all" ? allDocuments.length : categoryCounts[cat.id] ?? 0,
       })),
-    [categoryCounts]
+    [categoryCounts, allDocuments]
   );
 
   const filteredDocuments = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return mockDocuments.filter((doc) => {
+    return allDocuments.filter((doc) => {
       const matchesQuery =
         !query ||
         doc.code.toLowerCase().includes(query) ||
@@ -1056,11 +1159,11 @@ export function DocumentsView({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Código</Label>
-                  <Input placeholder="PNT-XXX-000" />
+                  <Input placeholder="PNT-XXX-000" value={newDocCode} onChange={(e) => setNewDocCode(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Título</Label>
-                  <Input placeholder="Nombre del documento" />
+                  <Input placeholder="Nombre del documento" value={newDocTitle} onChange={(e) => setNewDocTitle(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Categoría</Label>
@@ -1079,7 +1182,7 @@ export function DocumentsView({
                 </div>
                 <div className="space-y-2">
                   <Label>Área / Categoría específica</Label>
-                  <Select defaultValue="calidad">
+                  <Select value={newDocCategory} onValueChange={setNewDocCategory}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona una categoría" />
                     </SelectTrigger>
@@ -1096,12 +1199,12 @@ export function DocumentsView({
 
               <div className="space-y-2">
                 <Label>Descripción / alcance</Label>
-                <Textarea placeholder="Describe el alcance del documento..." rows={3} />
+                <Textarea placeholder="Describe el alcance del documento..." rows={3} value={newDocDescription} onChange={(e) => setNewDocDescription(e.target.value)} />
               </div>
 
               <div className="space-y-2">
                 <Label>Archivo</Label>
-                <Input type="file" />
+                <Input type="file" accept=".pdf,.docx,.xlsx,.xls,.doc" onChange={(e) => setNewDocFile(e.target.files?.[0] || null)} />
               </div>
             </TabsContent>
             <TabsContent value="batch" className="space-y-4 mt-4">
@@ -1162,15 +1265,10 @@ export function DocumentsView({
             </Button>
             <Button
               variant="accent"
-              onClick={() => {
-                toast({
-                  title: "Documento cargado",
-                  description: "El documento se ha añadido a la biblioteca.",
-                });
-                onNewDocumentOpenChange(false);
-              }}
+              disabled={isUploading}
+              onClick={handleUploadDocument}
             >
-              Guardar
+              {isUploading ? "Subiendo..." : "Guardar"}
             </Button>
           </DialogFooter>
         </DialogContent>
