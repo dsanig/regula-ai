@@ -27,18 +27,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Safety timeout: if auth never resolves, stop loading and show login
+    const safetyTimeout = setTimeout(() => {
+      setIsLoading(false);
+    }, 10000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        clearTimeout(safetyTimeout);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          const { data } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("user_id", session.user.id)
-            .single();
-          setProfile(data as Profile | null);
+          try {
+            const { data } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("user_id", session.user.id)
+              .single();
+            setProfile(data as Profile | null);
+          } catch {
+            setProfile(null);
+          }
         } else {
           setProfile(null);
         }
@@ -47,21 +57,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      clearTimeout(safetyTimeout);
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("user_id", session.user.id)
-          .single();
-        setProfile(data as Profile | null);
+        try {
+          const { data } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("user_id", session.user.id)
+            .single();
+          setProfile(data as Profile | null);
+        } catch {
+          setProfile(null);
+        }
       }
+      setIsLoading(false);
+    }).catch(() => {
+      clearTimeout(safetyTimeout);
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(safetyTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
