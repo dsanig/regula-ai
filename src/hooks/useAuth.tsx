@@ -27,57 +27,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const loadProfile = async (userId: string) => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", userId)
+          .single();
+        setProfile(data as Profile | null);
+      } catch {
+        setProfile(null);
+      }
+    };
+
+    const applySession = (nextSession: Session | null) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      setIsLoading(false);
+
+      if (nextSession?.user) {
+        void loadProfile(nextSession.user.id);
+      } else {
+        setProfile(null);
+      }
+    };
+
     // Safety timeout: if auth never resolves, stop loading and show login
     const safetyTimeout = setTimeout(() => {
       setIsLoading(false);
     }, 10000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (_event, nextSession) => {
         clearTimeout(safetyTimeout);
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          try {
-            const { data } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("user_id", session.user.id)
-              .single();
-            setProfile(data as Profile | null);
-          } catch {
-            setProfile(null);
-          }
-        } else {
-          setProfile(null);
-        }
-        setIsLoading(false);
+        applySession(nextSession);
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      clearTimeout(safetyTimeout);
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        try {
-          const { data } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("user_id", session.user.id)
-            .single();
-          setProfile(data as Profile | null);
-        } catch {
-          setProfile(null);
-        }
-      }
-      setIsLoading(false);
-    }).catch(() => {
-      clearTimeout(safetyTimeout);
-      setIsLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: nextSession } }) => {
+        clearTimeout(safetyTimeout);
+        applySession(nextSession);
+      })
+      .catch(() => {
+        clearTimeout(safetyTimeout);
+        setIsLoading(false);
+      });
 
     return () => {
       clearTimeout(safetyTimeout);
