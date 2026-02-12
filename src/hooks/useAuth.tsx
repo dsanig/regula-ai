@@ -8,6 +8,8 @@ interface Profile {
   email: string;
   full_name: string | null;
   company_id: string | null;
+  is_admin: boolean;
+  is_root_admin: boolean;
 }
 
 interface AuthContextType {
