@@ -1,6 +1,5 @@
 import { Globe, BadgeCheck, Building2, UserCircle, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 
 export function SettingsView() {
@@ -13,19 +12,12 @@ export function SettingsView() {
           <Globe className="w-5 h-5 text-accent" />
           <div>
             <h3 className="font-semibold text-foreground">Idioma de la interfaz</h3>
-            <p className="text-sm text-muted-foreground">Selecciona el idioma principal de QualiQ.</p>
+            <p className="text-sm text-muted-foreground">QualiQ está configurado en español para todos los usuarios.</p>
           </div>
         </div>
-        <Select defaultValue="es">
-          <SelectTrigger className="max-w-xs">
-            <SelectValue placeholder="Selecciona idioma" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="es">Español</SelectItem>
-            <SelectItem value="en">English</SelectItem>
-            <SelectItem value="pt">Português</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="max-w-xs rounded-md border border-border bg-secondary/30 px-3 py-2 text-sm text-foreground">
+          Idioma activo: Español (fijo)
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -39,7 +31,7 @@ export function SettingsView() {
           </div>
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>
-              <span className="font-medium text-foreground">Plan:</span> Professional
+              <span className="font-medium text-foreground">Plan:</span> Profesional
             </p>
             <p>
               <span className="font-medium text-foreground">Tipo de usuario:</span>{" "}
@@ -92,7 +84,7 @@ export function SettingsView() {
               <span className="font-medium text-foreground">Usuario:</span> {user?.email ?? "usuario@empresa.com"}
             </p>
             <p>
-              <span className="font-medium text-foreground">Plan actual:</span> Professional Annual
+              <span className="font-medium text-foreground">Plan actual:</span> Profesional anual
             </p>
             <p>
               <span className="font-medium text-foreground">Último acceso:</span> Hoy, 09:32

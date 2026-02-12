@@ -36,19 +36,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadProfile = async (userId: string) => {
       try {
-        const [{ data }, { data: adminRole }, { data: rootAdmin }] = await Promise.all([
+        const [{ data }, { data: adminRole }, { data: superadminRole }] = await Promise.all([
           supabase
-          .from("profiles")
-          .select("*")
-          .eq("user_id", userId)
-          .single(),
-          supabase.rpc("has_role", { _user_id: userId, _role: "Administrador" }),
-          supabase.rpc("is_root_admin", { uid: userId }),
+            .from("profiles")
+            .select("*")
+            .or(`user_id.eq.${userId},id.eq.${userId}`)
+            .maybeSingle(),
+          (supabase as any).rpc("has_role", { uid: userId, r: "Administrador" }),
+          (supabase as any).rpc("is_superadmin", { uid: userId }),
         ]);
 
-        setProfile(data as Profile | null);
-        setIsAdmin(Boolean(adminRole));
-        setIsRootAdmin(Boolean(rootAdmin));
+        setProfile((data as Profile | null) ?? null);
+        setIsAdmin(Boolean(adminRole) || Boolean(superadminRole));
+        setIsRootAdmin(Boolean(superadminRole));
       } catch {
         setProfile(null);
         setIsAdmin(false);
@@ -70,17 +70,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    // Safety timeout: if auth never resolves, stop loading and show login
     const safetyTimeout = setTimeout(() => {
       setIsLoading(false);
     }, 10000);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        clearTimeout(safetyTimeout);
-        applySession(nextSession);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      clearTimeout(safetyTimeout);
+      applySession(nextSession);
+    });
 
     supabase.auth
       .getSession()
@@ -113,13 +112,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const [{ data: adminRole }, { data: rootAdmin }] = await Promise.all([
-      supabase.rpc("has_role", { _user_id: user.id, _role: "Administrador" }),
-      supabase.rpc("is_root_admin", { uid: user.id }),
+    const [{ data: adminRole }, { data: superadminRole }] = await Promise.all([
+      (supabase as any).rpc("has_role", { uid: user.id, r: "Administrador" }),
+      (supabase as any).rpc("is_superadmin", { uid: user.id }),
     ]);
 
-    setIsAdmin(Boolean(adminRole));
-    setIsRootAdmin(Boolean(rootAdmin));
+    setIsAdmin(Boolean(adminRole) || Boolean(superadminRole));
+    setIsRootAdmin(Boolean(superadminRole));
   };
 
   return (
