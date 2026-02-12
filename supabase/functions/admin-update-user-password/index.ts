@@ -59,12 +59,12 @@ serve(async (req) => {
 
     const { data: callerProfile, error: callerProfileError } = await serviceClient
       .from("profiles")
-      .select("is_root_admin")
+      .select("is_superadmin")
       .eq("id", caller.id)
       .single();
 
-    if (callerProfileError || !callerProfile?.is_root_admin) {
-      return new Response(JSON.stringify({ error: "Solo la cuenta root puede cambiar contraseñas." }), {
+    if (callerProfileError || !callerProfile?.is_superadmin) {
+      return new Response(JSON.stringify({ error: "Solo el superadministrador puede cambiar contraseñas." }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

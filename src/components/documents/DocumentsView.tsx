@@ -128,7 +128,7 @@ export function DocumentsView({
   const [signedDocuments, setSignedDocuments] = useState<Record<string, SignedDocument>>({});
   const { toast } = useToast();
   const { user, profile } = useAuth();
-  const { canUpload, refreshPermissions } = usePermissions();
+  const { canEditContent, refreshPermissions } = usePermissions();
 
   // New document form state
   const [newDocCode, setNewDocCode] = useState("");
@@ -242,7 +242,7 @@ export function DocumentsView({
       toast({ title: "Error", description: "Debes iniciar sesión.", variant: "destructive" });
       return;
     }
-    if (!canUpload) {
+    if (!canEditContent) {
       toast({
         title: "Permisos insuficientes",
         description: "Tu sesión no tiene permisos de administrador para subir documentos.",
@@ -628,8 +628,8 @@ export function DocumentsView({
             data-testid="documents-new-button"
             variant="accent"
             onClick={() => onNewDocumentOpenChange(true)}
-            disabled={!canUpload}
-            title={canUpload ? undefined : "Solo los usuarios Administrador o Superadministrador pueden subir documentos."}
+            disabled={!canEditContent}
+            title={canEditContent ? undefined : "Solo Superadmin, Administrador o Editor pueden subir documentos."}
           >
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Documento
@@ -1288,8 +1288,8 @@ export function DocumentsView({
             </Button>
             <Button
               variant="accent"
-              disabled={isUploading || !canUpload}
-              title={canUpload ? undefined : "Solo los usuarios Administrador o Superadministrador pueden subir documentos."}
+              disabled={isUploading || !canEditContent}
+              title={canEditContent ? undefined : "Solo Superadmin, Administrador o Editor pueden subir documentos."}
               onClick={handleUploadDocument}
               data-testid="document-save-button"
             >
