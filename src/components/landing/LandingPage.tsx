@@ -132,7 +132,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             </a>
           </nav>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm">Iniciar Sesión</Button>
+            <Button variant="ghost" size="sm" onClick={onGetStarted}>Iniciar Sesión</Button>
             <Button variant="accent" size="sm" onClick={onGetStarted}>
               Empezar Ahora
             </Button>
