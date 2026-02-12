@@ -373,6 +373,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notifications: {
@@ -520,6 +527,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          is_admin: boolean
           updated_at: string
           user_id: string
         }
@@ -530,6 +538,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id?: string
+          is_admin?: boolean
           updated_at?: string
           user_id: string
         }
@@ -540,6 +549,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          is_admin?: boolean
           updated_at?: string
           user_id?: string
         }

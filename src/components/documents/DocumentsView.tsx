@@ -168,15 +168,32 @@ export function DocumentsView({
       .eq("company_id", profile.company_id)
       .order("created_at", { ascending: false });
     if (!error && data) {
-      const ownerIds = [...new Set(data.map((doc) => doc.uploaded_by || doc.owner_id))].filter(Boolean);
-      const { data: ownersData } = ownerIds.length
-        ? await supabase
-            .from("profiles")
-            .select("user_id, full_name, email")
-            .in("user_id", ownerIds)
-        : { data: [] };
+      const uploaderProfileIds = [...new Set(data.map((doc) => doc.uploaded_by).filter(Boolean))];
+      const ownerUserIds = [...new Set(data.map((doc) => doc.owner_id).filter(Boolean))];
 
-      const ownerMap = new Map(
+      const [{ data: uploadersData }, { data: ownersData }] = await Promise.all([
+        uploaderProfileIds.length
+          ? supabase
+              .from("profiles")
+              .select("id, full_name, email")
+              .in("id", uploaderProfileIds)
+          : Promise.resolve({ data: [] }),
+        ownerUserIds.length
+          ? supabase
+              .from("profiles")
+              .select("user_id, full_name, email")
+              .in("user_id", ownerUserIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const uploaderMap = new Map(
+        (uploadersData || []).map((owner) => [
+          owner.id,
+          owner.full_name?.trim() || owner.email || owner.id,
+        ])
+      );
+
+      const ownerUserMap = new Map(
         (ownersData || []).map((owner) => [
           owner.user_id,
           owner.full_name?.trim() || owner.email || owner.user_id,
@@ -192,12 +209,12 @@ export function DocumentsView({
         version: String(d.version) + ".0",
         status: d.status as Document["status"],
         lastUpdated: new Date(d.updated_at).toISOString().split("T")[0],
-        owner: ownerMap.get(d.uploaded_by || d.owner_id) || d.uploaded_by || d.owner_id,
+        owner: uploaderMap.get(d.uploaded_by) || ownerUserMap.get(d.owner_id) || d.owner_id,
         ownerId: d.uploaded_by || d.owner_id,
         pageCount: 0,
         format: (d.file_type || "pdf") as Document["format"],
-        originalAuthor: ownerMap.get(d.uploaded_by || d.owner_id) || d.uploaded_by || d.owner_id,
-        lastModifiedBy: ownerMap.get(d.uploaded_by || d.owner_id) || d.uploaded_by || d.owner_id,
+        originalAuthor: uploaderMap.get(d.uploaded_by) || ownerUserMap.get(d.owner_id) || d.owner_id,
+        lastModifiedBy: uploaderMap.get(d.uploaded_by) || ownerUserMap.get(d.owner_id) || d.owner_id,
         fileUrl: d.object_path || d.file_url,
       }));
       setDbDocuments(mapped);
@@ -207,23 +224,29 @@ export function DocumentsView({
   const fetchAdminStatus = useCallback(async () => {
     if (!user) {
       setIsAdmin(false);
-      return;
+      return false;
     }
 
     const { data, error } = await supabase
-      .from("user_roles")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
+      .rpc("is_admin", { uid: user.id });
 
     if (error) {
-      console.warn("Failed to fetch admin role", error);
+      console.error("[documents.upload] Failed to evaluate admin status", {
+        stage: "auth.admin_check",
+        userId: user.id,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        full: error,
+      });
       setIsAdmin(false);
-      return;
+      return false;
     }
 
-    setIsAdmin(Boolean(data));
+    const nextIsAdmin = Boolean(data);
+    setIsAdmin(nextIsAdmin);
+    return nextIsAdmin;
   }, [user]);
 
   useEffect(() => {
@@ -246,10 +269,11 @@ export function DocumentsView({
       toast({ title: "Error", description: "Debes iniciar sesión.", variant: "destructive" });
       return;
     }
-    if (!isAdmin) {
+    const latestIsAdmin = await fetchAdminStatus();
+    if (!latestIsAdmin) {
       toast({
         title: "Permisos insuficientes",
-        description: "Solo administradores pueden subir documentos.",
+        description: "Tu sesión no tiene permisos de administrador para subir documentos.",
         variant: "destructive",
       });
       return;
@@ -302,7 +326,7 @@ export function DocumentsView({
         category: newDocCategory.charAt(0).toUpperCase() + newDocCategory.slice(1),
         company_id: profile.company_id,
         owner_id: user.id,
-        uploaded_by: user.id,
+        uploaded_by: profile.id,
         bucket_id: "documents",
         object_path: filePath,
         file_type: fileExt,
