@@ -64,7 +64,7 @@ export function CompanyView() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "viewer",
+    role: "Viewer",
   });
   const [passwordForm, setPasswordForm] = useState({ newPassword: "", confirmPassword: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -96,7 +96,7 @@ export function CompanyView() {
     if (!isRootAdmin) {
       toast({
         title: "Acción no permitida",
-        description: "Solo la cuenta root puede crear usuarios.",
+        description: "Solo la cuenta principal puede crear usuarios.",
         variant: "destructive",
       });
       return;
@@ -153,12 +153,21 @@ export function CompanyView() {
       title: "Usuario creado",
       description: "Usuario creado con contraseña inicial.",
     });
-    setCreateForm({ fullName: "", email: "", password: "", confirmPassword: "", role: "viewer" });
+    setCreateForm({ fullName: "", email: "", password: "", confirmPassword: "", role: "Viewer" });
     setIsUserDialogOpen(false);
     void fetchUsers();
   };
 
   const handleUpdatePassword = async () => {
+    if (!isRootAdmin) {
+      toast({
+        title: "Acción no permitida",
+        description: "Solo la cuenta principal puede cambiar contraseñas.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!selectedUserId) {
       toast({ title: "Selecciona un usuario", variant: "destructive" });
       return;
@@ -346,7 +355,7 @@ export function CompanyView() {
                   setIsUserDialogOpen(true);
                 }}
                 disabled={!isRootAdmin}
-                title={isRootAdmin ? undefined : "Solo la cuenta root puede crear usuarios."}
+                title={isRootAdmin ? undefined : "Solo la cuenta principal puede crear usuarios."}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Crear usuario
@@ -364,18 +373,21 @@ export function CompanyView() {
                     <span className="text-xs bg-secondary px-2 py-1 rounded-full">
                       {userItem.is_root_admin ? "Root" : userItem.is_admin ? "Administrador" : "Usuario"}
                     </span>
-                    {isRootAdmin && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedUserId(userItem.id);
-                          setIsPasswordDialogOpen(true);
-                        }}
-                      >
-                        Cambiar contraseña
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!isRootAdmin}
+                      title={isRootAdmin ? undefined : "Solo la cuenta principal puede cambiar contraseñas"}
+                      onClick={() => {
+                        if (!isRootAdmin) {
+                          return;
+                        }
+                        setSelectedUserId(userItem.id);
+                        setIsPasswordDialogOpen(true);
+                      }}
+                    >
+                      Cambiar contraseña
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -514,7 +526,7 @@ export function CompanyView() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Administrador">Administrador</SelectItem>
-                  <SelectItem value="viewer">Usuario</SelectItem>
+                  <SelectItem value="Viewer">Viewer</SelectItem>
                 </SelectContent>
               </Select>
             </div>
