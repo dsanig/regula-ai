@@ -2,6 +2,12 @@ import { useState, useEffect, createContext, useContext, ReactNode } from "react
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+type RpcClient = {
+  rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+};
+
+const rpcClient = supabase as unknown as RpcClient;
+
 interface Profile {
   id: string;
   user_id: string;
@@ -33,22 +39,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isRootAdmin, setIsRootAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const readIsSuperadmin = async (userId: string) => {
+    const candidates = [
+      () => rpcClient.rpc("is_superadmin", { uid: userId }),
+      () => rpcClient.rpc("is_root_admin", { uid: userId }),
+    ];
+
+    for (const call of candidates) {
+      const { data, error } = await call();
+      if (!error) {
+        return Boolean(data);
+      }
+    }
+
+    return false;
+  };
+
+  const readIsAdministrador = async (userId: string) => {
+    const candidates = [
+      () => rpcClient.rpc("has_role", { uid: userId, r: "Administrador" }),
+      () => rpcClient.rpc("has_role", { _user_id: userId, _role: "Administrador" }),
+      () => rpcClient.rpc("is_admin", { uid: userId }),
+    ];
+
+    for (const call of candidates) {
+      const { data, error } = await call();
+      if (!error) {
+        return Boolean(data);
+      }
+    }
+
+    return false;
+  };
+
   useEffect(() => {
     const loadProfile = async (userId: string) => {
       try {
-        const [{ data }, { data: adminRole }, { data: superadminRole }] = await Promise.all([
+        const [{ data }, adminRole, superadminRole] = await Promise.all([
           supabase
             .from("profiles")
             .select("*")
             .or(`user_id.eq.${userId},id.eq.${userId}`)
             .maybeSingle(),
-          (supabase as any).rpc("has_role", { uid: userId, r: "Administrador" }),
-          (supabase as any).rpc("is_superadmin", { uid: userId }),
+          readIsAdministrador(userId),
+          readIsSuperadmin(userId),
         ]);
 
         setProfile((data as Profile | null) ?? null);
-        setIsAdmin(Boolean(adminRole) || Boolean(superadminRole));
-        setIsRootAdmin(Boolean(superadminRole));
+        setIsAdmin(adminRole || superadminRole);
+        setIsRootAdmin(superadminRole);
       } catch {
         setProfile(null);
         setIsAdmin(false);
@@ -112,13 +151,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const [{ data: adminRole }, { data: superadminRole }] = await Promise.all([
-      (supabase as any).rpc("has_role", { uid: user.id, r: "Administrador" }),
-      (supabase as any).rpc("is_superadmin", { uid: user.id }),
+    const [adminRole, superadminRole] = await Promise.all([
+      readIsAdministrador(user.id),
+      readIsSuperadmin(user.id),
     ]);
 
-    setIsAdmin(Boolean(adminRole) || Boolean(superadminRole));
-    setIsRootAdmin(Boolean(superadminRole));
+    setIsAdmin(adminRole || superadminRole);
+    setIsRootAdmin(superadminRole);
   };
 
   return (
