@@ -57,25 +57,6 @@ export function usePermissions(): PermissionsState {
     return false;
   }, []);
 
-  const readIsAdministrador = useCallback(async (userId: string) => {
-    const candidates = [
-      () => readRole(userId, "Administrador"),
-      async () => {
-        const { data, error } = await rpcClient.rpc("is_admin", { uid: userId });
-        return !error && Boolean(data);
-      },
-    ];
-
-    for (const call of candidates) {
-      const result = await call();
-      if (result) {
-        return true;
-      }
-    }
-
-    return false;
-  }, [readRole]);
-
   const refreshPermissions = useCallback(async () => {
     setIsLoading(true);
 
@@ -96,7 +77,7 @@ export function usePermissions(): PermissionsState {
 
     const [superadminResult, adminResult, editorResult] = await Promise.all([
       readIsSuperadmin(userId),
-      readIsAdministrador(userId),
+      readRole(userId, "Administrador"),
       readRole(userId, "Editor"),
     ]);
 
@@ -104,7 +85,7 @@ export function usePermissions(): PermissionsState {
     setIsAdministrador(adminResult);
     setIsEditor(editorResult);
     setIsLoading(false);
-  }, [readIsAdministrador, readIsSuperadmin, readRole]);
+  }, [readIsSuperadmin, readRole]);
 
   useEffect(() => {
     void refreshPermissions();
