@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Building2, Mail, Plus, FileText, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -35,11 +36,14 @@ const mockCompany = {
   regulatoryScope: "ISO 9001, GMP, GDP",
 };
 
-const mockUsers = [
-  { id: "1", name: "María García", email: "maria@qualiq.ai", role: "Admin" },
-  { id: "2", name: "Carlos López", email: "carlos@qualiq.ai", role: "Editor" },
-  { id: "3", name: "Ana Martínez", email: "ana@qualiq.ai", role: "Viewer" },
-];
+type UserDirectoryEntry = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  is_admin: boolean;
+  is_root_admin: boolean;
+  created_at: string;
+};
 
 const mockInvoices = [
   { id: "INV-2024-001", amount: "€1.200", status: "Pagada", date: "2024-01-01" },
@@ -48,12 +52,155 @@ const mockInvoices = [
 ];
 
 export function CompanyView() {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("perfil");
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<(typeof mockUsers)[number] | null>(null);
-  const isAdmin = Boolean(user?.email?.includes("admin") || user?.app_metadata?.role === "admin");
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [users, setUsers] = useState<UserDirectoryEntry[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [createForm, setCreateForm] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    role: "viewer",
+  });
+  const [passwordForm, setPasswordForm] = useState({ newPassword: "", confirmPassword: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isAdmin = Boolean(profile?.is_admin);
+  const isRootAdmin = Boolean(profile?.is_root_admin);
+
+  const fetchUsers = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("user_directory")
+      .select("id, email, full_name, is_admin, is_root_admin, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast({
+        title: "No se pudieron cargar usuarios",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUsers((data ?? []) as UserDirectoryEntry[]);
+  }, [toast]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      void fetchUsers();
+    }
+  }, [fetchUsers, isAdmin]);
+
+  const handleCreateUser = async () => {
+    if (!isRootAdmin) {
+      toast({
+        title: "Acción no permitida",
+        description: "Solo la cuenta root puede crear usuarios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!createForm.email || !createForm.password) {
+      toast({
+        title: "Campos obligatorios",
+        description: "Email y contraseña son obligatorios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (createForm.password.length < 8) {
+      toast({
+        title: "Contraseña inválida",
+        description: "La contraseña debe tener al menos 8 caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (createForm.password !== createForm.confirmPassword) {
+      toast({
+        title: "Contraseñas no coinciden",
+        description: "Confirma la misma contraseña para crear el usuario.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    const { error } = await supabase.functions.invoke("admin-create-user", {
+      body: {
+        email: createForm.email,
+        password: createForm.password,
+        full_name: createForm.fullName,
+        roles: [createForm.role],
+      },
+    });
+    setIsSubmitting(false);
+
+    if (error) {
+      toast({
+        title: "No se pudo crear el usuario",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Usuario creado",
+      description: "Usuario creado con contraseña inicial.",
+    });
+    setCreateForm({ fullName: "", email: "", password: "", confirmPassword: "", role: "viewer" });
+    setIsUserDialogOpen(false);
+    void fetchUsers();
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!selectedUserId) {
+      toast({ title: "Selecciona un usuario", variant: "destructive" });
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      toast({
+        title: "Contraseña inválida",
+        description: "La nueva contraseña debe tener al menos 8 caracteres.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast({ title: "Contraseñas no coinciden", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    const { error } = await supabase.functions.invoke("admin-update-user-password", {
+      body: { target_user_id: selectedUserId, new_password: passwordForm.newPassword },
+    });
+    setIsSubmitting(false);
+
+    if (error) {
+      toast({
+        title: "No se pudo actualizar la contraseña",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({ title: "Contraseña actualizada" });
+    setPasswordForm({ newPassword: "", confirmPassword: "" });
+    setSelectedUserId("");
+    setIsPasswordDialogOpen(false);
+  };
 
   if (!isAdmin) {
     return (
@@ -199,9 +346,10 @@ export function CompanyView() {
               <Button
                 variant="accent"
                 onClick={() => {
-                  setEditingUser(null);
                   setIsUserDialogOpen(true);
                 }}
+                disabled={!isRootAdmin}
+                title={isRootAdmin ? undefined : "Solo la cuenta root puede crear usuarios."}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Crear usuario
@@ -209,37 +357,28 @@ export function CompanyView() {
             </div>
 
             <div className="space-y-3">
-              {mockUsers.map((userItem) => (
+              {users.map((userItem) => (
                 <div key={userItem.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
                   <div>
-                    <p className="text-sm font-medium text-foreground">{userItem.name}</p>
+                    <p className="text-sm font-medium text-foreground">{userItem.full_name || "Sin nombre"}</p>
                     <p className="text-xs text-muted-foreground">{userItem.email}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs bg-secondary px-2 py-1 rounded-full">{userItem.role}</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingUser(userItem);
-                        setIsUserDialogOpen(true);
-                      }}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={() =>
-                        toast({
-                          title: "Usuario eliminado",
-                          description: `${userItem.name} ha sido eliminado.`,
-                        })
-                      }
-                    >
-                      Eliminar
-                    </Button>
+                    <span className="text-xs bg-secondary px-2 py-1 rounded-full">
+                      {userItem.is_root_admin ? "Root" : userItem.is_admin ? "Administrador" : "Usuario"}
+                    </span>
+                    {isRootAdmin && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUserId(userItem.id);
+                          setIsPasswordDialogOpen(true);
+                        }}
+                      >
+                        Cambiar contraseña
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -327,30 +466,58 @@ export function CompanyView() {
       <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingUser ? "Editar usuario" : "Crear usuario"}</DialogTitle>
+            <DialogTitle>Crear usuario</DialogTitle>
             <DialogDescription>
-              Gestiona usuarios asignados a la compañía. Los administradores pueden crear y eliminar cuentas.
+              Crear usuario con contraseña inicial (sin flujo de invitación por email).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
               <Label>Nombre</Label>
-              <Input defaultValue={editingUser?.name} placeholder="Nombre y apellidos" />
+              <Input
+                value={createForm.fullName}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                placeholder="Nombre y apellidos"
+              />
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input defaultValue={editingUser?.email} placeholder="usuario@empresa.com" />
+              <Input
+                value={createForm.email}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, email: e.target.value }))}
+                placeholder="usuario@empresa.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Contraseña</Label>
+              <Input
+                type="password"
+                value={createForm.password}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, password: e.target.value }))}
+                placeholder="Mínimo 8 caracteres"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirmar contraseña</Label>
+              <Input
+                type="password"
+                value={createForm.confirmPassword}
+                onChange={(e) => setCreateForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                placeholder="Repite la contraseña"
+              />
             </div>
             <div className="space-y-2">
               <Label>Rol</Label>
-              <Select defaultValue={editingUser?.role ?? "Viewer"}>
+              <Select
+                value={createForm.role}
+                onValueChange={(value) => setCreateForm((prev) => ({ ...prev, role: value }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona un rol" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="Editor">Editor</SelectItem>
-                  <SelectItem value="Viewer">Viewer</SelectItem>
+                  <SelectItem value="Administrador">Administrador</SelectItem>
+                  <SelectItem value="viewer">Usuario</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -361,15 +528,48 @@ export function CompanyView() {
             </Button>
             <Button
               variant="accent"
-              onClick={() => {
-                toast({
-                  title: editingUser ? "Usuario actualizado" : "Usuario creado",
-                  description: "Los cambios se han guardado correctamente.",
-                });
-                setIsUserDialogOpen(false);
-              }}
+              onClick={handleCreateUser}
+              disabled={isSubmitting}
             >
               Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cambiar contraseña de usuario</DialogTitle>
+            <DialogDescription>
+              Solo la cuenta root puede establecer una nueva contraseña para otros usuarios.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Nueva contraseña</Label>
+              <Input
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
+                placeholder="Mínimo 8 caracteres"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirmar contraseña</Label>
+              <Input
+                type="password"
+                value={passwordForm.confirmPassword}
+                onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="accent" onClick={handleUpdatePassword} disabled={isSubmitting}>
+              Actualizar
             </Button>
           </DialogFooter>
         </DialogContent>

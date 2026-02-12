@@ -531,6 +531,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_admin: boolean
+          is_root_admin: boolean
           updated_at: string
           user_id: string
         }
@@ -542,6 +543,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_admin?: boolean
+          is_root_admin?: boolean
           updated_at?: string
           user_id: string
         }
@@ -553,6 +555,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_admin?: boolean
+          is_root_admin?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -723,7 +726,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_directory: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          is_admin: boolean
+          is_root_admin: boolean
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
@@ -735,6 +748,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { uid: string }; Returns: boolean }
+      is_root_admin: { Args: { uid: string }; Returns: boolean }
     }
     Enums: {
       app_role:
