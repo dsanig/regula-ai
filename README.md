@@ -71,3 +71,12 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## SPA routing on custom domains
+
+This repo includes static-host fallbacks for React Router:
+
+- `public/_redirects` to rewrite all routes to `index.html` on hosts that support Netlify-style redirects.
+- `public/404.html` to redirect unknown routes back to `/` on hosts that serve a static 404 page.
+
+If your domain still shows an HTTP 404 at `/`, verify your hosting provider is serving the built `dist/` output for this project.
