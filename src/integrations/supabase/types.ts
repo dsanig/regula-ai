@@ -303,6 +303,7 @@ export type Database = {
       }
       documents: {
         Row: {
+          bucket_id: string
           category: string
           code: string
           company_id: string
@@ -313,13 +314,17 @@ export type Database = {
           is_locked: boolean
           locked_at: string | null
           locked_by: string | null
+          object_path: string
           owner_id: string
           status: Database["public"]["Enums"]["document_status"]
           title: string
+          uploaded_at: string
+          uploaded_by: string
           updated_at: string
           version: number
         }
         Insert: {
+          bucket_id?: string
           category?: string
           code: string
           company_id: string
@@ -330,13 +335,17 @@ export type Database = {
           is_locked?: boolean
           locked_at?: string | null
           locked_by?: string | null
+          object_path?: string
           owner_id: string
           status?: Database["public"]["Enums"]["document_status"]
           title: string
+          uploaded_at?: string
+          uploaded_by: string
           updated_at?: string
           version?: number
         }
         Update: {
+          bucket_id?: string
           category?: string
           code?: string
           company_id?: string
@@ -347,9 +356,12 @@ export type Database = {
           is_locked?: boolean
           locked_at?: string | null
           locked_by?: string | null
+          object_path?: string
           owner_id?: string
           status?: Database["public"]["Enums"]["document_status"]
           title?: string
+          uploaded_at?: string
+          uploaded_by?: string
           updated_at?: string
           version?: number
         }
@@ -709,6 +721,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: { uid: string }; Returns: boolean }
     }
     Enums: {
       app_role:
