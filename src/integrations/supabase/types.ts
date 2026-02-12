@@ -320,6 +320,7 @@ export type Database = {
           title: string
           uploaded_at: string
           uploaded_by: string
+          uploaded_by_email: string | null
           updated_at: string
           version: number
         }
@@ -341,6 +342,7 @@ export type Database = {
           title: string
           uploaded_at?: string
           uploaded_by: string
+          uploaded_by_email?: string | null
           updated_at?: string
           version?: number
         }
@@ -362,6 +364,7 @@ export type Database = {
           title?: string
           uploaded_at?: string
           uploaded_by?: string
+          uploaded_by_email?: string | null
           updated_at?: string
           version?: number
         }
@@ -735,6 +738,7 @@ export type Database = {
     }
     Enums: {
       app_role:
+        | "Administrador"
         | "admin"
         | "quality_manager"
         | "quality_tech"
@@ -871,6 +875,7 @@ export const Constants = {
     Enums: {
       app_role: [
         "admin",
+        "Administrador",
         "quality_manager",
         "quality_tech",
         "regulatory",
