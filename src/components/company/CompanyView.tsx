@@ -40,8 +40,8 @@ type UserDirectoryEntry = {
   id: string;
   email: string;
   full_name: string | null;
-  is_admin: boolean;
-  is_root_admin: boolean;
+  role: "Administrador" | "Editor" | "Espectador";
+  is_superadmin: boolean;
   created_at: string;
 };
 
@@ -52,7 +52,7 @@ const mockInvoices = [
 ];
 
 export function CompanyView() {
-  const { canAccessEmpresa, canManagePasswords, refreshPermissions } = usePermissions();
+  const { canManageCompany, canManagePasswords, refreshPermissions } = usePermissions();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("perfil");
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
@@ -64,14 +64,14 @@ export function CompanyView() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "Viewer",
+    role: "Espectador",
   });
   const [passwordForm, setPasswordForm] = useState({ newPassword: "", confirmPassword: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fetchUsers = useCallback(async () => {
     const { data, error } = await supabase
       .from("user_directory")
-      .select("id, email, full_name, is_admin, is_root_admin, created_at")
+      .select("id, email, full_name, role, is_superadmin, created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -87,10 +87,10 @@ export function CompanyView() {
   }, [toast]);
 
   useEffect(() => {
-    if (canAccessEmpresa) {
+    if (canManageCompany) {
       void fetchUsers();
     }
-  }, [canAccessEmpresa, fetchUsers]);
+  }, [canManageCompany, fetchUsers]);
 
   useEffect(() => {
     void refreshPermissions();
@@ -157,7 +157,7 @@ export function CompanyView() {
       title: "Usuario creado",
       description: "Usuario creado con contraseña inicial.",
     });
-    setCreateForm({ fullName: "", email: "", password: "", confirmPassword: "", role: "Viewer" });
+    setCreateForm({ fullName: "", email: "", password: "", confirmPassword: "", role: "Espectador" });
     setIsUserDialogOpen(false);
     void fetchUsers();
   };
@@ -212,7 +212,7 @@ export function CompanyView() {
     setIsPasswordDialogOpen(false);
   };
 
-  if (!canAccessEmpresa) {
+  if (!canManageCompany) {
     return (
       <div className="bg-card rounded-lg border border-border p-6 space-y-4">
         <div className="flex items-start gap-3">
@@ -220,7 +220,7 @@ export function CompanyView() {
           <div>
             <h3 className="font-semibold text-foreground">Acceso restringido a Empresa</h3>
             <p className="text-sm text-muted-foreground">
-              Los datos completos de la empresa están disponibles solo para administradores. Puedes solicitar acceso.
+              Los datos completos de la empresa están disponibles solo para Administrador o Superadmin.
             </p>
           </div>
         </div>
@@ -376,7 +376,7 @@ export function CompanyView() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs bg-secondary px-2 py-1 rounded-full">
-                      {userItem.is_root_admin ? "Superadministrador" : userItem.is_admin ? "Administrador" : "Usuario"}
+                      {userItem.is_superadmin ? "Superadministrador" : userItem.role}
                     </span>
                     {canManagePasswords && (
                       <Button
@@ -533,7 +533,8 @@ export function CompanyView() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Administrador">Administrador</SelectItem>
-                  <SelectItem value="Viewer">Viewer</SelectItem>
+                  <SelectItem value="Editor">Editor</SelectItem>
+                  <SelectItem value="Espectador">Espectador</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -559,7 +560,7 @@ export function CompanyView() {
           <DialogHeader>
             <DialogTitle>Cambiar contraseña de usuario</DialogTitle>
             <DialogDescription>
-              Solo la cuenta root puede establecer una nueva contraseña para otros usuarios.
+              Solo el superadministrador puede establecer una nueva contraseña para otros usuarios.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">

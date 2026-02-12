@@ -19,11 +19,16 @@ const normalizeRole = (role: string) => {
   if (normalized === "admin" || normalized === "administrador") {
     return "Administrador";
   }
-  if (normalized === "viewer") {
-    return "viewer";
+  if (normalized === "editor") {
+    return "Editor";
+  }
+  if (normalized === "viewer" || normalized === "espectador") {
+    return "Espectador";
   }
   return role.trim();
 };
+
+const ASSIGNABLE_ROLES = new Set(["Administrador", "Editor", "Espectador"]);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -73,12 +78,12 @@ serve(async (req) => {
 
     const { data: callerProfile, error: callerProfileError } = await serviceClient
       .from("profiles")
-      .select("is_root_admin, company_id")
+      .select("is_superadmin")
       .eq("id", caller.id)
       .single();
 
-    if (callerProfileError || !callerProfile?.is_root_admin) {
-      return new Response(JSON.stringify({ error: "Solo la cuenta root puede gestionar usuarios." }), {
+    if (callerProfileError || !callerProfile?.is_superadmin) {
+      return new Response(JSON.stringify({ error: "Solo el superadministrador puede gestionar usuarios." }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -88,7 +93,7 @@ serve(async (req) => {
     const email = payload.email?.trim().toLowerCase();
     const password = payload.password?.trim();
     const fullName = payload.full_name?.trim() ?? null;
-    const requestedRoles = payload.roles ?? (payload.role ? [payload.role] : ["viewer"]);
+    const requestedRoles = payload.roles ?? (payload.role ? [payload.role] : ["Espectador"]);
 
     if (!email || !password || password.length < 8) {
       return new Response(JSON.stringify({ error: "Email y contraseña válida (mínimo 8 caracteres) son obligatorios." }), {
@@ -98,6 +103,16 @@ serve(async (req) => {
     }
 
     const normalizedRoles = [...new Set(requestedRoles.map((role) => normalizeRole(role)).filter(Boolean))];
+
+    if (normalizedRoles.length === 0 || normalizedRoles.some((role) => !ASSIGNABLE_ROLES.has(role))) {
+      return new Response(
+        JSON.stringify({ error: "Roles inválidos. Solo se permiten: Administrador, Editor y Espectador." }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     const { data: createdUserData, error: createUserError } = await serviceClient.auth.admin.createUser({
       email,
@@ -116,19 +131,14 @@ serve(async (req) => {
     }
 
     const newUserId = createdUserData.user.id;
-    const companyId = callerProfile.company_id ?? null;
-    const isAdminRole = normalizedRoles.some((role) => role === "Administrador");
-
     const { error: profileUpsertError } = await serviceClient.from("profiles").upsert(
       {
         id: newUserId,
-        user_id: newUserId,
         email,
         full_name: fullName,
-        company_id: companyId,
-        is_admin: isAdminRole,
+        is_superadmin: false,
       },
-      { onConflict: "user_id" }
+      { onConflict: "id" }
     );
 
     if (profileUpsertError) {
@@ -147,7 +157,7 @@ serve(async (req) => {
 
       if (rolesError) {
         await serviceClient.auth.admin.deleteUser(newUserId);
-        await serviceClient.from("profiles").delete().eq("user_id", newUserId);
+        await serviceClient.from("profiles").delete().eq("id", newUserId);
         return new Response(JSON.stringify({ error: `No se pudieron asignar los roles: ${rolesError.message}` }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
