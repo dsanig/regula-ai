@@ -303,7 +303,6 @@ export type Database = {
       }
       documents: {
         Row: {
-          bucket_id: string
           category: string
           code: string
           company_id: string
@@ -314,18 +313,13 @@ export type Database = {
           is_locked: boolean
           locked_at: string | null
           locked_by: string | null
-          object_path: string
           owner_id: string
           status: Database["public"]["Enums"]["document_status"]
           title: string
-          uploaded_at: string
-          uploaded_by: string
-          uploaded_by_email: string | null
           updated_at: string
           version: number
         }
         Insert: {
-          bucket_id?: string
           category?: string
           code: string
           company_id: string
@@ -336,18 +330,13 @@ export type Database = {
           is_locked?: boolean
           locked_at?: string | null
           locked_by?: string | null
-          object_path?: string
           owner_id: string
           status?: Database["public"]["Enums"]["document_status"]
           title: string
-          uploaded_at?: string
-          uploaded_by: string
-          uploaded_by_email?: string | null
           updated_at?: string
           version?: number
         }
         Update: {
-          bucket_id?: string
           category?: string
           code?: string
           company_id?: string
@@ -358,13 +347,9 @@ export type Database = {
           is_locked?: boolean
           locked_at?: string | null
           locked_by?: string | null
-          object_path?: string
           owner_id?: string
           status?: Database["public"]["Enums"]["document_status"]
           title?: string
-          uploaded_at?: string
-          uploaded_by?: string
-          uploaded_by_email?: string | null
           updated_at?: string
           version?: number
         }
@@ -374,13 +359,6 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "documents_uploaded_by_fkey"
-            columns: ["uploaded_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -530,8 +508,6 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
-          is_admin: boolean
-          is_root_admin: boolean
           updated_at: string
           user_id: string
         }
@@ -542,8 +518,6 @@ export type Database = {
           email: string
           full_name?: string | null
           id?: string
-          is_admin?: boolean
-          is_root_admin?: boolean
           updated_at?: string
           user_id: string
         }
@@ -554,8 +528,6 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
-          is_admin?: boolean
-          is_root_admin?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -726,17 +698,7 @@ export type Database = {
       }
     }
     Views: {
-      user_directory: {
-        Row: {
-          created_at: string
-          email: string
-          full_name: string | null
-          id: string
-          is_admin: boolean
-          is_root_admin: boolean
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
@@ -747,12 +709,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: { Args: { uid: string }; Returns: boolean }
-      is_root_admin: { Args: { uid: string }; Returns: boolean }
     }
     Enums: {
       app_role:
-        | "Administrador"
         | "admin"
         | "quality_manager"
         | "quality_tech"
@@ -889,7 +848,6 @@ export const Constants = {
     Enums: {
       app_role: [
         "admin",
-        "Administrador",
         "quality_manager",
         "quality_tech",
         "regulatory",
