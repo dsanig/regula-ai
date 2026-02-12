@@ -15,12 +15,14 @@ import { SettingsView } from "@/components/settings/SettingsView";
 import { TrainingExamView } from "@/components/training/TrainingExamView";
 import { AuditSimulatorView } from "@/components/audit/AuditSimulatorView";
 import { PredictiveAnalyticsView } from "@/components/analytics/PredictiveAnalyticsView";
+import { AuditManagementView } from "@/components/audit/AuditManagementView";
 
 const moduleConfig: Record<string, { title: string; subtitle?: string }> = {
   dashboard: { title: "Panel de Control", subtitle: "Visión general del estado de cumplimiento" },
   documents: { title: "Gestión Documental", subtitle: "SOPs, PNTs y documentación de calidad" },
   processes: { title: "Procesos / PNT", subtitle: "Gestión de procedimientos normalizados" },
   incidents: { title: "Incidencias", subtitle: "No conformidades, desviaciones y CAPAs" },
+  audits: { title: "Auditorías", subtitle: "Gestión de auditorías, CAPA y acciones" },
   training: { title: "Formación Dinámica", subtitle: "Evaluación de comprensión de procedimientos" },
   "audit-simulator": { title: "Simulador de Auditoría", subtitle: "Simulación de inspecciones FDA/EMA" },
   "predictive-analytics": { title: "Análisis Predictivo CAPA", subtitle: "Detección de patrones y acciones preventivas" },
@@ -30,7 +32,7 @@ const moduleConfig: Record<string, { title: string; subtitle?: string }> = {
   "pending-actions": { title: "Acciones Pendientes", subtitle: "Seguimiento completo de tareas y aprobaciones" },
 };
 
-type IncidentType = "non-conformity" | "deviation" | "incident" | "complaint" | "capa";
+type IncidentType = "incidencia" | "reclamacion" | "desviacion" | "otra";
 
 const Index = () => {
   const [activeModule, setActiveModule] = useState("dashboard");
@@ -78,6 +80,8 @@ const Index = () => {
         return "Buscar procesos...";
       case "incidents":
         return "Buscar incidencias...";
+      case "audits":
+        return "Buscar auditorías...";
       default:
         return "Buscar documentos, procesos...";
     }
@@ -91,13 +95,11 @@ const Index = () => {
         break;
       case "Registrar Incidencia":
         setActiveModule("incidents");
-        setIncidentTypeSeed("incident");
+        setIncidentTypeSeed("incidencia");
         setIsNewIncidentOpen(true);
         break;
       case "Crear CAPA":
-        setActiveModule("incidents");
-        setIncidentTypeSeed("capa");
-        setIsNewIncidentOpen(true);
+        setActiveModule("audits");
         break;
       case "Ver Informes":
         setActiveModule("analytics");
@@ -163,6 +165,8 @@ const Index = () => {
             initialIncidentType={incidentTypeSeed}
           />
         );
+      case "audits":
+        return <AuditManagementView />;
       case "chatbot":
         return <ChatbotView />;
       case "training":
