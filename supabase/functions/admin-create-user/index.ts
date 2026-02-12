@@ -11,6 +11,7 @@ type CreateUserPayload = {
   password: string;
   full_name?: string;
   roles?: string[];
+  role?: string;
 };
 
 serve(async (req) => {
@@ -62,7 +63,7 @@ serve(async (req) => {
     const { data: callerProfile, error: callerProfileError } = await serviceClient
       .from("profiles")
       .select("is_root_admin, company_id")
-      .eq("user_id", caller.id)
+       .or(`user_id.eq.${caller.id},id.eq.${caller.id}`)
       .single();
 
     if (callerProfileError || !callerProfile?.is_root_admin) {
@@ -76,7 +77,7 @@ serve(async (req) => {
     const email = payload.email?.trim().toLowerCase();
     const password = payload.password?.trim();
     const fullName = payload.full_name?.trim() ?? null;
-    const requestedRoles = payload.roles ?? ["viewer"];
+    const requestedRoles = payload.roles ?? (payload.role ? [payload.role] : ["viewer"]);
 
     if (!email || !password || password.length < 8) {
       return new Response(JSON.stringify({ error: "Email y contraseña válida (mínimo 8 caracteres) son obligatorios." }), {
@@ -86,6 +87,7 @@ serve(async (req) => {
     }
 
     const normalizedRoles = [...new Set(requestedRoles.map((role) => role.trim()).filter(Boolean))];
+    const canonicalRoles = normalizedRoles.map((role) => (role === "admin" ? "Administrador" : role));
 
     const { data: createdUserData, error: createUserError } = await serviceClient.auth.admin.createUser({
       email,
@@ -105,7 +107,7 @@ serve(async (req) => {
 
     const newUserId = createdUserData.user.id;
     const companyId = callerProfile.company_id ?? null;
-    const isAdminRole = normalizedRoles.some((role) => role === "Administrador" || role === "admin");
+    const isAdminRole = canonicalRoles.some((role) => role === "Administrador");
 
     const { error: profileUpsertError } = await serviceClient.from("profiles").upsert(
       {
@@ -127,7 +129,7 @@ serve(async (req) => {
     }
 
     if (normalizedRoles.length > 0) {
-      const roleRows = normalizedRoles.map((role) => ({ user_id: newUserId, role }));
+      const roleRows = canonicalRoles.map((role) => ({ user_id: newUserId, role }));
       const { error: rolesError } = await serviceClient.from("user_roles").upsert(roleRows, {
         onConflict: "user_id,role",
       });
