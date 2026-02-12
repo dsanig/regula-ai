@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -52,7 +52,7 @@ const mockInvoices = [
 ];
 
 export function CompanyView() {
-  const { isAdmin, isRootAdmin } = useAuth();
+  const { canAccessEmpresa, canManagePasswords, refreshPermissions } = usePermissions();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("perfil");
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
@@ -87,16 +87,20 @@ export function CompanyView() {
   }, [toast]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (canAccessEmpresa) {
       void fetchUsers();
     }
-  }, [fetchUsers, isAdmin]);
+  }, [canAccessEmpresa, fetchUsers]);
+
+  useEffect(() => {
+    void refreshPermissions();
+  }, [refreshPermissions]);
 
   const handleCreateUser = async () => {
-    if (!isRootAdmin) {
+    if (!canManagePasswords) {
       toast({
         title: "Acción no permitida",
-        description: "Solo la cuenta principal puede crear usuarios.",
+        description: "Solo el superadministrador puede crear usuarios.",
         variant: "destructive",
       });
       return;
@@ -159,10 +163,10 @@ export function CompanyView() {
   };
 
   const handleUpdatePassword = async () => {
-    if (!isRootAdmin) {
+    if (!canManagePasswords) {
       toast({
         title: "Acción no permitida",
-        description: "Solo la cuenta principal puede cambiar contraseñas.",
+        description: "Solo el superadministrador puede cambiar contraseñas.",
         variant: "destructive",
       });
       return;
@@ -208,7 +212,7 @@ export function CompanyView() {
     setIsPasswordDialogOpen(false);
   };
 
-  if (!isAdmin) {
+  if (!canAccessEmpresa) {
     return (
       <div className="bg-card rounded-lg border border-border p-6 space-y-4">
         <div className="flex items-start gap-3">
@@ -354,8 +358,8 @@ export function CompanyView() {
                 onClick={() => {
                   setIsUserDialogOpen(true);
                 }}
-                disabled={!isRootAdmin}
-                title={isRootAdmin ? undefined : "Solo la cuenta principal puede crear usuarios."}
+                disabled={!canManagePasswords}
+                title={canManagePasswords ? undefined : "Solo el superadministrador puede crear usuarios."}
                 data-testid="create-user-button"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -372,9 +376,9 @@ export function CompanyView() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs bg-secondary px-2 py-1 rounded-full">
-                      {userItem.is_root_admin ? "Root" : userItem.is_admin ? "Administrador" : "Usuario"}
+                      {userItem.is_root_admin ? "Superadministrador" : userItem.is_admin ? "Administrador" : "Usuario"}
                     </span>
-                    {isRootAdmin && (
+                    {canManagePasswords && (
                       <Button
                         variant="outline"
                         size="sm"

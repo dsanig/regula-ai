@@ -195,7 +195,7 @@ export function AuditManagementView() {
 
       <div className="space-y-4">
         <Card>
-          <CardHeader><CardTitle>Audit Info</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Información de auditoría</CardTitle></CardHeader>
           <CardContent>
             {selectedAudit ? (
               <div className="space-y-2 text-sm">
@@ -208,7 +208,7 @@ export function AuditManagementView() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>CAPA Plan</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Plan CAPA</CardTitle></CardHeader>
           <CardContent>
             <p className="text-sm">{selectedCapaPlan?.description ?? "Plan CAPA generado automáticamente para esta auditoría."}</p>
           </CardContent>
@@ -216,7 +216,7 @@ export function AuditManagementView() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Non-conformities</CardTitle>
+            <CardTitle>No conformidades</CardTitle>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={() => setNewNcOpen(true)} data-testid="audit-new-nc-button">Añadir NC</Button>
               <Button size="sm" onClick={() => setNewActionOpen(true)} data-testid="audit-new-action-button">Añadir acción</Button>
@@ -233,7 +233,7 @@ export function AuditManagementView() {
                 <div className="mt-2 space-y-1">
                   {actions.filter((action) => action.non_conformity_id === nc.id).map((action) => (
                     <div key={action.id} className="rounded bg-muted/40 p-2 text-sm">
-                      <p className="font-medium">{action.action_type === "corrective" ? "Corrective action" : "Preventive action"}</p>
+                      <p className="font-medium">{action.action_type === "corrective" ? "Acción correctiva" : "Acción preventiva"}</p>
                       <p>{action.description}</p>
                       <p className="text-xs text-muted-foreground">Estado: {action.status}</p>
                     </div>
@@ -286,8 +286,8 @@ export function AuditManagementView() {
               <Select value={actionForm.action_type} onValueChange={(value: "corrective" | "preventive") => setActionForm((prev) => ({ ...prev, action_type: value }))}>
                 <SelectTrigger data-testid="action-type-select"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="corrective">Corrective</SelectItem>
-                  <SelectItem value="preventive">Preventive</SelectItem>
+                  <SelectItem value="corrective">Correctiva</SelectItem>
+                  <SelectItem value="preventive">Preventiva</SelectItem>
                 </SelectContent>
               </Select>
             </div>
