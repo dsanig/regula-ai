@@ -72,6 +72,23 @@ To connect a domain, navigate to Project > Settings > Domains and click Connect 
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
 
+
+## Supabase admin user management env vars
+
+For root-admin user creation/password reset flows, configure these secrets for Supabase Edge Functions:
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (**server only**, never expose in frontend)
+
+Example:
+
+```sh
+supabase secrets set SUPABASE_URL=...
+supabase secrets set SUPABASE_ANON_KEY=...
+supabase secrets set SUPABASE_SERVICE_ROLE_KEY=...
+```
+
 ## SPA routing on custom domains
 
 This repo includes static-host fallbacks for React Router:
