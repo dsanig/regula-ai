@@ -44,6 +44,7 @@ interface Document {
   status: "approved" | "draft" | "review" | "obsolete";
   lastUpdated: string;
   owner: string;
+  ownerId: string;
   pageCount: number;
   format: "pdf" | "docx" | "xlsx";
   originalAuthor: string;
@@ -134,6 +135,7 @@ export function DocumentsView({
   const [newDocDescription, setNewDocDescription] = useState("");
   const [newDocFile, setNewDocFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Real documents from database
   const [dbDocuments, setDbDocuments] = useState<Document[]>([]);
@@ -166,6 +168,21 @@ export function DocumentsView({
       .eq("company_id", profile.company_id)
       .order("created_at", { ascending: false });
     if (!error && data) {
+      const ownerIds = [...new Set(data.map((doc) => doc.uploaded_by || doc.owner_id))].filter(Boolean);
+      const { data: ownersData } = ownerIds.length
+        ? await supabase
+            .from("profiles")
+            .select("user_id, full_name, email")
+            .in("user_id", ownerIds)
+        : { data: [] };
+
+      const ownerMap = new Map(
+        (ownersData || []).map((owner) => [
+          owner.user_id,
+          owner.full_name?.trim() || owner.email || owner.user_id,
+        ])
+      );
+
       const mapped: Document[] = data.map((d) => ({
         id: d.id,
         code: d.code,
@@ -175,21 +192,48 @@ export function DocumentsView({
         version: String(d.version) + ".0",
         status: d.status as Document["status"],
         lastUpdated: new Date(d.updated_at).toISOString().split("T")[0],
-        owner: d.owner_id,
+        owner: ownerMap.get(d.uploaded_by || d.owner_id) || d.uploaded_by || d.owner_id,
+        ownerId: d.uploaded_by || d.owner_id,
         pageCount: 0,
         format: (d.file_type || "pdf") as Document["format"],
-        originalAuthor: d.owner_id,
-        lastModifiedBy: d.owner_id,
-        fileUrl: d.file_url,
+        originalAuthor: ownerMap.get(d.uploaded_by || d.owner_id) || d.uploaded_by || d.owner_id,
+        lastModifiedBy: ownerMap.get(d.uploaded_by || d.owner_id) || d.uploaded_by || d.owner_id,
+        fileUrl: d.object_path || d.file_url,
       }));
       setDbDocuments(mapped);
     }
   }, [profile?.company_id]);
 
+  const fetchAdminStatus = useCallback(async () => {
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("user_roles")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Failed to fetch admin role", error);
+      setIsAdmin(false);
+      return;
+    }
+
+    setIsAdmin(Boolean(data));
+  }, [user]);
+
   useEffect(() => {
     fetchDocuments();
     fetchSignatures();
   }, [fetchDocuments, fetchSignatures]);
+
+  useEffect(() => {
+    fetchAdminStatus();
+  }, [fetchAdminStatus]);
 
   const allDocuments = useMemo(() => [...dbDocuments], [dbDocuments]);
 
@@ -202,15 +246,46 @@ export function DocumentsView({
       toast({ title: "Error", description: "Debes iniciar sesión.", variant: "destructive" });
       return;
     }
+    if (!isAdmin) {
+      toast({
+        title: "Permisos insuficientes",
+        description: "Solo administradores pueden subir documentos.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsUploading(true);
     try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+
+      console.info("[documents.upload] auth state", {
+        sessionError,
+        userError,
+        sessionUserId: sessionData.session?.user?.id,
+        authUserId: userData.user?.id,
+        contextUserId: user.id,
+      });
+
       const fileExt = newDocFile.name.split(".").pop() || "pdf";
-      const filePath = `${profile.company_id}/${crypto.randomUUID()}.${fileExt}`;
+      const documentId = crypto.randomUUID();
+      const filePath = `${profile.company_id}/${documentId}/${newDocFile.name}`;
 
       const { error: uploadError } = await supabase.storage
         .from("documents")
         .upload(filePath, newDocFile);
+
+      if (uploadError) {
+        console.error("[documents.upload] storage.objects insert failed", {
+          stage: "storage.objects",
+          message: uploadError.message,
+          code: uploadError.name,
+          details: (uploadError as { details?: string }).details,
+          hint: (uploadError as { hint?: string }).hint,
+          full: uploadError,
+        });
+      }
 
       if (uploadError) throw uploadError;
 
@@ -221,15 +296,30 @@ export function DocumentsView({
       const fileUrl = urlData.publicUrl;
 
       const { error: insertError } = await supabase.from("documents").insert({
+        id: documentId,
         code: newDocCode.trim(),
         title: newDocTitle.trim(),
         category: newDocCategory.charAt(0).toUpperCase() + newDocCategory.slice(1),
         company_id: profile.company_id,
         owner_id: user.id,
+        uploaded_by: user.id,
+        bucket_id: "documents",
+        object_path: filePath,
         file_type: fileExt,
         file_url: filePath,
         status: "draft" as const,
       });
+
+      if (insertError) {
+        console.error("[documents.upload] public.documents insert failed", {
+          stage: "public.documents",
+          message: insertError.message,
+          code: insertError.code,
+          details: insertError.details,
+          hint: insertError.hint,
+          full: insertError,
+        });
+      }
 
       if (insertError) throw insertError;
 
@@ -241,8 +331,17 @@ export function DocumentsView({
       setNewDocDescription("");
       setNewDocFile(null);
       fetchDocuments();
-    } catch (err: any) {
-      toast({ title: "Error al subir", description: err.message || "No se pudo subir el documento.", variant: "destructive" });
+    } catch (err: unknown) {
+      const uploadError = err as { message?: string; details?: string; hint?: string; code?: string };
+      const details = [uploadError.message, uploadError.details, uploadError.hint].filter(Boolean).join(" · ");
+      const isPermissionError = uploadError.code === "42501" || /row-level security|permission/i.test(uploadError.message || "");
+      toast({
+        title: "Error al subir",
+        description: isPermissionError
+          ? `Permiso denegado por políticas RLS. ${details || "Verifica rol de administrador."}`
+          : details || "No se pudo subir el documento.",
+        variant: "destructive",
+      });
     } finally {
       setIsUploading(false);
     }
@@ -521,7 +620,7 @@ export function DocumentsView({
             <Filter className="w-4 h-4 mr-2" />
             Filtrar
           </Button>
-          <Button variant="accent" onClick={() => onNewDocumentOpenChange(true)}>
+          <Button variant="accent" onClick={() => onNewDocumentOpenChange(true)} disabled={!isAdmin}>
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Documento
           </Button>
