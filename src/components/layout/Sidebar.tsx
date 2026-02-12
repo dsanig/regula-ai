@@ -28,6 +28,7 @@ const navigationItems = [
   { id: "documents", label: "Documentos", icon: FileText },
   { id: "processes", label: "Procesos / PNT", icon: GitBranch },
   { id: "incidents", label: "Incidencias", icon: AlertTriangle },
+  { id: "audits", label: "Auditorías", icon: ClipboardCheck },
   { id: "training", label: "Formación", icon: GraduationCap },
   { id: "audit-simulator", label: "Simulador Auditoría", icon: ClipboardCheck },
   { id: "predictive-analytics", label: "Análisis Predictivo", icon: TrendingUp },
