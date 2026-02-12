@@ -265,6 +265,7 @@ export default function Auth() {
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
+                  data-testid="auth-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -280,6 +281,7 @@ export default function Auth() {
                 <div className="relative mt-1">
                   <Input
                     id="password"
+                    data-testid="auth-password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -298,7 +300,7 @@ export default function Auth() {
                   <p className="text-destructive text-sm mt-1">{errors.password}</p>
                 )}
               </div>
-              <Button type="submit" variant="accent" className="w-full" disabled={isLoading}>
+              <Button type="submit" variant="accent" className="w-full" disabled={isLoading} data-testid="auth-submit">
                 {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {mode === "login" ? "Iniciar Sesión" : "Crear Cuenta"}
               </Button>
