@@ -89,6 +89,16 @@ export function usePermissions(): PermissionsState {
 
   useEffect(() => {
     void refreshPermissions();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      void refreshPermissions();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [refreshPermissions]);
 
   const canManageCompany = isSuperadmin || isAdministrador;
