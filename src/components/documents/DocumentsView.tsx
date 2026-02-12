@@ -284,11 +284,17 @@ export function DocumentsView({
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       const { data: userData, error: userError } = await supabase.auth.getUser();
 
+      if (userError || !userData.user) {
+        throw userError ?? new Error("No se pudo obtener el usuario autenticado.");
+      }
+
+      const uploaderUser = userData.user;
+
       console.info("[documents.upload] auth state", {
         sessionError,
         userError,
         sessionUserId: sessionData.session?.user?.id,
-        authUserId: userData.user?.id,
+        authUserId: uploaderUser.id,
         contextUserId: user.id,
       });
 
@@ -325,8 +331,9 @@ export function DocumentsView({
         title: newDocTitle.trim(),
         category: newDocCategory.charAt(0).toUpperCase() + newDocCategory.slice(1),
         company_id: profile.company_id,
-        owner_id: user.id,
-        uploaded_by: profile.id,
+        owner_id: uploaderUser.id,
+        uploaded_by: uploaderUser.id,
+        uploaded_by_email: uploaderUser.email ?? null,
         bucket_id: "documents",
         object_path: filePath,
         file_type: fileExt,
@@ -644,7 +651,12 @@ export function DocumentsView({
             <Filter className="w-4 h-4 mr-2" />
             Filtrar
           </Button>
-          <Button variant="accent" onClick={() => onNewDocumentOpenChange(true)} disabled={!isAdmin}>
+          <Button
+            variant="accent"
+            onClick={() => onNewDocumentOpenChange(true)}
+            disabled={!isAdmin}
+            title={isAdmin ? undefined : "Solo los usuarios con rol Administrador pueden subir documentos."}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Documento
           </Button>
@@ -1302,7 +1314,8 @@ export function DocumentsView({
             </Button>
             <Button
               variant="accent"
-              disabled={isUploading}
+              disabled={isUploading || !isAdmin}
+              title={isAdmin ? undefined : "Solo los usuarios con rol Administrador pueden subir documentos."}
               onClick={handleUploadDocument}
             >
               {isUploading ? "Subiendo..." : "Guardar"}
