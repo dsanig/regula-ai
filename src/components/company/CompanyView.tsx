@@ -236,7 +236,7 @@ export function CompanyView() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-3 max-w-lg">
           <TabsTrigger value="perfil">Perfil empresa</TabsTrigger>
-          <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
+          <TabsTrigger value="usuarios" data-testid="company-users-tab">Usuarios</TabsTrigger>
           <TabsTrigger value="facturacion">Facturación</TabsTrigger>
         </TabsList>
 
@@ -356,6 +356,7 @@ export function CompanyView() {
                 }}
                 disabled={!isRootAdmin}
                 title={isRootAdmin ? undefined : "Solo la cuenta principal puede crear usuarios."}
+                data-testid="create-user-button"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Crear usuario
@@ -373,21 +374,19 @@ export function CompanyView() {
                     <span className="text-xs bg-secondary px-2 py-1 rounded-full">
                       {userItem.is_root_admin ? "Root" : userItem.is_admin ? "Administrador" : "Usuario"}
                     </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!isRootAdmin}
-                      title={isRootAdmin ? undefined : "Solo la cuenta principal puede cambiar contraseñas"}
-                      onClick={() => {
-                        if (!isRootAdmin) {
-                          return;
-                        }
-                        setSelectedUserId(userItem.id);
-                        setIsPasswordDialogOpen(true);
-                      }}
-                    >
-                      Cambiar contraseña
-                    </Button>
+                    {isRootAdmin && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        data-testid={`change-password-${userItem.id}`}
+                        onClick={() => {
+                          setSelectedUserId(userItem.id);
+                          setIsPasswordDialogOpen(true);
+                        }}
+                      >
+                        Cambiar contraseña
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -473,7 +472,7 @@ export function CompanyView() {
       </Tabs>
 
       <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg" data-testid="create-user-modal">
           <DialogHeader>
             <DialogTitle>Crear usuario</DialogTitle>
             <DialogDescription>
@@ -484,6 +483,7 @@ export function CompanyView() {
             <div className="space-y-2">
               <Label>Nombre</Label>
               <Input
+                data-testid="create-user-name"
                 value={createForm.fullName}
                 onChange={(e) => setCreateForm((prev) => ({ ...prev, fullName: e.target.value }))}
                 placeholder="Nombre y apellidos"
@@ -492,6 +492,7 @@ export function CompanyView() {
             <div className="space-y-2">
               <Label>Email</Label>
               <Input
+                data-testid="create-user-email"
                 value={createForm.email}
                 onChange={(e) => setCreateForm((prev) => ({ ...prev, email: e.target.value }))}
                 placeholder="usuario@empresa.com"
@@ -500,6 +501,7 @@ export function CompanyView() {
             <div className="space-y-2">
               <Label>Contraseña</Label>
               <Input
+                data-testid="create-user-password"
                 type="password"
                 value={createForm.password}
                 onChange={(e) => setCreateForm((prev) => ({ ...prev, password: e.target.value }))}
@@ -509,6 +511,7 @@ export function CompanyView() {
             <div className="space-y-2">
               <Label>Confirmar contraseña</Label>
               <Input
+                data-testid="create-user-confirm-password"
                 type="password"
                 value={createForm.confirmPassword}
                 onChange={(e) => setCreateForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
@@ -521,7 +524,7 @@ export function CompanyView() {
                 value={createForm.role}
                 onValueChange={(value) => setCreateForm((prev) => ({ ...prev, role: value }))}
               >
-                <SelectTrigger>
+                <SelectTrigger data-testid="create-user-role">
                   <SelectValue placeholder="Selecciona un rol" />
                 </SelectTrigger>
                 <SelectContent>
@@ -539,6 +542,7 @@ export function CompanyView() {
               variant="accent"
               onClick={handleCreateUser}
               disabled={isSubmitting}
+              data-testid="create-user-save"
             >
               Guardar
             </Button>
@@ -547,7 +551,7 @@ export function CompanyView() {
       </Dialog>
 
       <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" data-testid="change-password-modal">
           <DialogHeader>
             <DialogTitle>Cambiar contraseña de usuario</DialogTitle>
             <DialogDescription>
@@ -558,6 +562,7 @@ export function CompanyView() {
             <div className="space-y-2">
               <Label>Nueva contraseña</Label>
               <Input
+                data-testid="new-password-input"
                 type="password"
                 value={passwordForm.newPassword}
                 onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
@@ -567,6 +572,7 @@ export function CompanyView() {
             <div className="space-y-2">
               <Label>Confirmar contraseña</Label>
               <Input
+                data-testid="confirm-password-input"
                 type="password"
                 value={passwordForm.confirmPassword}
                 onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
@@ -577,7 +583,7 @@ export function CompanyView() {
             <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button variant="accent" onClick={handleUpdatePassword} disabled={isSubmitting}>
+            <Button variant="accent" onClick={handleUpdatePassword} disabled={isSubmitting} data-testid="update-password-save">
               Actualizar
             </Button>
           </DialogFooter>

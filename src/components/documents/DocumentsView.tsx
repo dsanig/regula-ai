@@ -646,6 +646,7 @@ export function DocumentsView({
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
+            data-testid="documents-search"
             placeholder={
               mode === "processes"
                 ? "Buscar procesos por código, título o responsable..."
@@ -657,11 +658,12 @@ export function DocumentsView({
           />
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={onOpenFilters}>
+          <Button variant="outline" onClick={onOpenFilters} data-testid="documents-filter-button">
             <Filter className="w-4 h-4 mr-2" />
             Filtrar
           </Button>
           <Button
+            data-testid="documents-new-button"
             variant="accent"
             onClick={() => onNewDocumentOpenChange(true)}
             disabled={!isAdmin || !authIsAdmin}
@@ -921,7 +923,7 @@ export function DocumentsView({
       </div>
 
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent className="sm:max-w-3xl" data-testid="new-document-modal">
           <DialogHeader>
             <DialogTitle>Vista previa del documento</DialogTitle>
             <DialogDescription>
@@ -1202,7 +1204,7 @@ export function DocumentsView({
       </Dialog>
 
       <Dialog open={isNewDocumentOpen} onOpenChange={onNewDocumentOpenChange}>
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent className="sm:max-w-3xl" data-testid="new-document-modal">
           <DialogHeader>
             <DialogTitle>Nuevo documento</DialogTitle>
             <DialogDescription>
@@ -1218,16 +1220,16 @@ export function DocumentsView({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Código</Label>
-                  <Input placeholder="PNT-XXX-000" value={newDocCode} onChange={(e) => setNewDocCode(e.target.value)} />
+                  <Input data-testid="document-code-input" placeholder="PNT-XXX-000" value={newDocCode} onChange={(e) => setNewDocCode(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Título</Label>
-                  <Input placeholder="Nombre del documento" value={newDocTitle} onChange={(e) => setNewDocTitle(e.target.value)} />
+                  <Input data-testid="document-title-input" placeholder="Nombre del documento" value={newDocTitle} onChange={(e) => setNewDocTitle(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label>Categoría</Label>
                   <Select defaultValue="manual">
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="document-category-select">
                       <SelectValue placeholder="Tipo de asignación" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1242,7 +1244,7 @@ export function DocumentsView({
                 <div className="space-y-2">
                   <Label>Área / Categoría específica</Label>
                   <Select value={newDocCategory} onValueChange={setNewDocCategory}>
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="document-category-select">
                       <SelectValue placeholder="Selecciona una categoría" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1263,7 +1265,7 @@ export function DocumentsView({
 
               <div className="space-y-2">
                 <Label>Archivo</Label>
-                <Input type="file" accept=".pdf,.docx,.xlsx,.xls,.doc" onChange={(e) => setNewDocFile(e.target.files?.[0] || null)} />
+                <Input data-testid="document-file-input" type="file" accept=".pdf,.docx,.xlsx,.xls,.doc" onChange={(e) => setNewDocFile(e.target.files?.[0] || null)} />
               </div>
             </TabsContent>
             <TabsContent value="batch" className="space-y-4 mt-4">
@@ -1283,7 +1285,7 @@ export function DocumentsView({
                   <div className="space-y-2">
                     <Label>Asignación por defecto</Label>
                     <Select defaultValue="manual">
-                      <SelectTrigger>
+                      <SelectTrigger data-testid="document-category-select">
                         <SelectValue placeholder="Asignación" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1327,6 +1329,7 @@ export function DocumentsView({
               disabled={isUploading || !isAdmin || !authIsAdmin}
               title={isAdmin && authIsAdmin ? undefined : "Solo los usuarios con rol Administrador pueden subir documentos."}
               onClick={handleUploadDocument}
+              data-testid="document-save-button"
             >
               {isUploading ? "Subiendo..." : "Guardar"}
             </Button>

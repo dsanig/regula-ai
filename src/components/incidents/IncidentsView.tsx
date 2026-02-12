@@ -154,7 +154,7 @@ export function IncidentsView({
               <Input className="pl-9 w-[260px]" placeholder="Buscar incidencias..." value={searchQuery} onChange={(e) => onSearchChange(e.target.value)} />
             </div>
             <Button variant="outline" onClick={onOpenFilters}><Filter className="w-4 h-4 mr-1" />Filtros</Button>
-            <Button onClick={() => onNewIncidentOpenChange(true)}><Plus className="w-4 h-4 mr-1" />Nueva incidencia</Button>
+            <Button onClick={() => onNewIncidentOpenChange(true)} data-testid="incidents-new-button"><Plus className="w-4 h-4 mr-1" />Nueva incidencia</Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -179,18 +179,18 @@ export function IncidentsView({
       </Card>
 
       <Dialog open={isNewIncidentOpen} onOpenChange={onNewIncidentOpenChange}>
-        <DialogContent>
+        <DialogContent data-testid="new-incident-modal">
           <DialogHeader>
             <DialogTitle>Nueva incidencia</DialogTitle>
             <DialogDescription>Registra incidencia, reclamación, desviación u otra, con auditoría opcional.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div><Label>Título</Label><Input value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} /></div>
-            <div><Label>Descripción</Label><Textarea value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} /></div>
+            <div><Label>Título</Label><Input data-testid="incident-title-input" value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} /></div>
+            <div><Label>Descripción</Label><Textarea data-testid="incident-description-input" value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} /></div>
             <div>
               <Label>Tipo de incidencia</Label>
               <Select value={form.incidencia_type} onValueChange={(value: IncidentType) => setForm((prev) => ({ ...prev, incidencia_type: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger data-testid="incident-type-select"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="incidencia">Incidencia</SelectItem>
                   <SelectItem value="reclamacion">Reclamación</SelectItem>
@@ -202,7 +202,7 @@ export function IncidentsView({
             <div>
               <Label>Auditoría relacionada (opcional)</Label>
               <Select value={form.audit_id} onValueChange={(value) => setForm((prev) => ({ ...prev, audit_id: value }))}>
-                <SelectTrigger><SelectValue placeholder="Sin auditoría" /></SelectTrigger>
+                <SelectTrigger data-testid="incident-audit-select"><SelectValue placeholder="Sin auditoría" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sin auditoría</SelectItem>
                   {audits.map((audit) => <SelectItem key={audit.id} value={audit.id}>{audit.title}</SelectItem>)}
@@ -234,7 +234,7 @@ export function IncidentsView({
           </div>
           <DialogFooter>
             <Button onClick={() => onFiltersChange({ ...filters, incidentArea: "all" })} variant="ghost">Limpiar</Button>
-            <Button onClick={createIncident}>Crear incidencia</Button>
+            <Button onClick={createIncident} data-testid="incident-save-button">Crear incidencia</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

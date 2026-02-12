@@ -181,7 +181,7 @@ export function AuditManagementView() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Auditorías</CardTitle>
-          <Button size="sm" onClick={() => setNewAuditOpen(true)}><Plus className="mr-1 h-4 w-4" />Nueva</Button>
+          <Button size="sm" onClick={() => setNewAuditOpen(true)} data-testid="audit-new-button"><Plus className="mr-1 h-4 w-4" />Nueva</Button>
         </CardHeader>
         <CardContent className="space-y-2">
           {audits.map((audit) => (
@@ -218,8 +218,8 @@ export function AuditManagementView() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Non-conformities</CardTitle>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setNewNcOpen(true)}>Añadir NC</Button>
-              <Button size="sm" onClick={() => setNewActionOpen(true)}>Añadir acción</Button>
+              <Button size="sm" variant="outline" onClick={() => setNewNcOpen(true)} data-testid="audit-new-nc-button">Añadir NC</Button>
+              <Button size="sm" onClick={() => setNewActionOpen(true)} data-testid="audit-new-action-button">Añadir acción</Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -246,60 +246,60 @@ export function AuditManagementView() {
       </div>
 
       <Dialog open={newAuditOpen} onOpenChange={setNewAuditOpen}>
-        <DialogContent>
+        <DialogContent data-testid="new-audit-modal">
           <DialogHeader><DialogTitle>Nueva auditoría</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>Título</Label><Input value={auditForm.title} onChange={(e) => setAuditForm((prev) => ({ ...prev, title: e.target.value }))} /></div>
+            <div><Label>Título</Label><Input data-testid="audit-title-input" value={auditForm.title} onChange={(e) => setAuditForm((prev) => ({ ...prev, title: e.target.value }))} /></div>
             <div><Label>Fecha</Label><Input type="date" value={auditForm.audit_date} onChange={(e) => setAuditForm((prev) => ({ ...prev, audit_date: e.target.value }))} /></div>
             <div><Label>Descripción</Label><Textarea value={auditForm.description} onChange={(e) => setAuditForm((prev) => ({ ...prev, description: e.target.value }))} /></div>
           </div>
-          <DialogFooter><Button onClick={createAudit}>Crear</Button></DialogFooter>
+          <DialogFooter><Button onClick={createAudit} data-testid="audit-save-button">Crear</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={newNcOpen} onOpenChange={setNewNcOpen}>
-        <DialogContent>
+        <DialogContent data-testid="new-nc-modal">
           <DialogHeader><DialogTitle>Nueva no conformidad</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>Título</Label><Input value={ncForm.title} onChange={(e) => setNcForm((prev) => ({ ...prev, title: e.target.value }))} /></div>
+            <div><Label>Título</Label><Input data-testid="nc-title-input" value={ncForm.title} onChange={(e) => setNcForm((prev) => ({ ...prev, title: e.target.value }))} /></div>
             <div><Label>Descripción</Label><Textarea value={ncForm.description} onChange={(e) => setNcForm((prev) => ({ ...prev, description: e.target.value }))} /></div>
             <div><Label>Severidad</Label><Input value={ncForm.severity} onChange={(e) => setNcForm((prev) => ({ ...prev, severity: e.target.value }))} /></div>
             <div><Label>Causa raíz</Label><Textarea value={ncForm.root_cause} onChange={(e) => setNcForm((prev) => ({ ...prev, root_cause: e.target.value }))} /></div>
           </div>
-          <DialogFooter><Button onClick={createNonConformity}>Crear</Button></DialogFooter>
+          <DialogFooter><Button onClick={createNonConformity} data-testid="nc-save-button">Crear</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={newActionOpen} onOpenChange={setNewActionOpen}>
-        <DialogContent>
+        <DialogContent data-testid="new-action-modal">
           <DialogHeader><DialogTitle>Nueva acción</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>No conformidad</Label>
               <Select value={actionForm.non_conformity_id} onValueChange={(value) => setActionForm((prev) => ({ ...prev, non_conformity_id: value }))}>
-                <SelectTrigger><SelectValue placeholder="Selecciona NC" /></SelectTrigger>
+                <SelectTrigger data-testid="action-nc-select"><SelectValue placeholder="Selecciona NC" /></SelectTrigger>
                 <SelectContent>{filteredNcs.map((nc) => <SelectItem key={nc.id} value={nc.id}>{nc.title}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
               <Label>Tipo</Label>
               <Select value={actionForm.action_type} onValueChange={(value: "corrective" | "preventive") => setActionForm((prev) => ({ ...prev, action_type: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger data-testid="action-type-select"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="corrective">Corrective</SelectItem>
                   <SelectItem value="preventive">Preventive</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Descripción</Label><Textarea value={actionForm.description} onChange={(e) => setActionForm((prev) => ({ ...prev, description: e.target.value }))} /></div>
+            <div><Label>Descripción</Label><Textarea data-testid="action-description-input" value={actionForm.description} onChange={(e) => setActionForm((prev) => ({ ...prev, description: e.target.value }))} /></div>
             <div>
               <Label>Responsable</Label>
               <Select value={actionForm.responsible_id} onValueChange={(value) => setActionForm((prev) => ({ ...prev, responsible_id: value }))}>
-                <SelectTrigger><SelectValue placeholder="Selecciona responsable" /></SelectTrigger>
+                <SelectTrigger data-testid="action-responsible-select"><SelectValue placeholder="Selecciona responsable" /></SelectTrigger>
                 <SelectContent>{users.map((user) => <SelectItem key={user.id} value={user.id}>{user.full_name ?? user.email ?? user.id}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div><Label>Fecha vencimiento</Label><Input type="date" value={actionForm.due_date} onChange={(e) => setActionForm((prev) => ({ ...prev, due_date: e.target.value }))} /></div>
+            <div><Label>Fecha vencimiento</Label><Input data-testid="action-due-date-input" type="date" value={actionForm.due_date} onChange={(e) => setActionForm((prev) => ({ ...prev, due_date: e.target.value }))} /></div>
             <div>
               <Label>Estado</Label>
               <Select value={actionForm.status} onValueChange={(value) => setActionForm((prev) => ({ ...prev, status: value }))}>
@@ -309,11 +309,11 @@ export function AuditManagementView() {
             </div>
             <div>
               <Label>Adjunto</Label>
-              <Input type="file" onChange={(e) => setActionForm((prev) => ({ ...prev, file: e.target.files?.[0] ?? null }))} />
+              <Input data-testid="action-file-input" type="file" onChange={(e) => setActionForm((prev) => ({ ...prev, file: e.target.files?.[0] ?? null }))} />
               {actionForm.file && <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1"><Paperclip className="h-3 w-3" />{actionForm.file.name}</p>}
             </div>
           </div>
-          <DialogFooter><Button onClick={createAction}>Guardar acción</Button></DialogFooter>
+          <DialogFooter><Button onClick={createAction} data-testid="action-save-button">Guardar acción</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
