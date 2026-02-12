@@ -25,6 +25,57 @@ export function usePermissions(): PermissionsState {
   const [isAdministrador, setIsAdministrador] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
 
+  const readRole = useCallback(async (userId: string, role: "Administrador" | "Editor") => {
+    const candidates = [
+      () => rpcClient.rpc("has_role", { uid: userId, r: role }),
+      () => rpcClient.rpc("has_role", { _user_id: userId, _role: role }),
+    ];
+
+    for (const call of candidates) {
+      const { data, error } = await call();
+      if (!error) {
+        return Boolean(data);
+      }
+    }
+
+    return false;
+  }, []);
+
+  const readIsSuperadmin = useCallback(async (userId: string) => {
+    const candidates = [
+      () => rpcClient.rpc("is_superadmin", { uid: userId }),
+      () => rpcClient.rpc("is_root_admin", { uid: userId }),
+    ];
+
+    for (const call of candidates) {
+      const { data, error } = await call();
+      if (!error) {
+        return Boolean(data);
+      }
+    }
+
+    return false;
+  }, []);
+
+  const readIsAdministrador = useCallback(async (userId: string) => {
+    const candidates = [
+      () => readRole(userId, "Administrador"),
+      async () => {
+        const { data, error } = await rpcClient.rpc("is_admin", { uid: userId });
+        return !error && Boolean(data);
+      },
+    ];
+
+    for (const call of candidates) {
+      const result = await call();
+      if (result) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [readRole]);
+
   const refreshPermissions = useCallback(async () => {
     setIsLoading(true);
 
@@ -44,19 +95,29 @@ export function usePermissions(): PermissionsState {
     const userId = session.user.id;
 
     const [superadminResult, adminResult, editorResult] = await Promise.all([
-      rpcClient.rpc("is_superadmin", { uid: userId }),
-      rpcClient.rpc("has_role", { uid: userId, r: "Administrador" }),
-      rpcClient.rpc("has_role", { uid: userId, r: "Editor" }),
+      readIsSuperadmin(userId),
+      readIsAdministrador(userId),
+      readRole(userId, "Editor"),
     ]);
 
-    setIsSuperadmin(Boolean(superadminResult.data) && !superadminResult.error);
-    setIsAdministrador(Boolean(adminResult.data) && !adminResult.error);
-    setIsEditor(Boolean(editorResult.data) && !editorResult.error);
+    setIsSuperadmin(superadminResult);
+    setIsAdministrador(adminResult);
+    setIsEditor(editorResult);
     setIsLoading(false);
-  }, []);
+  }, [readIsAdministrador, readIsSuperadmin, readRole]);
 
   useEffect(() => {
     void refreshPermissions();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      void refreshPermissions();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [refreshPermissions]);
 
   const canManageCompany = isSuperadmin || isAdministrador;
