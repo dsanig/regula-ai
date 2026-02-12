@@ -52,10 +52,23 @@ interface Document {
 }
 
 interface SignedDocument {
-  file: File;
+  file?: File;
   signedAt: string;
   signerName: string;
   reason?: string;
+  id?: string;
+}
+
+// Build AutoFirma invocation URL using afirma:// protocol
+function buildAutoFirmaUrl(fileB64: string, fileName: string): string {
+  const params = new URLSearchParams({
+    op: "sign",
+    format: "CAdES",
+    algorithm: "SHA256withRSA",
+    dat: fileB64,
+    filename: fileName,
+  });
+  return `afirma://sign?${params.toString()}`;
 }
 
 
@@ -125,6 +138,26 @@ export function DocumentsView({
   // Real documents from database
   const [dbDocuments, setDbDocuments] = useState<Document[]>([]);
 
+  // Fetch signatures from DB
+  const fetchSignatures = useCallback(async () => {
+    if (!profile?.company_id) return;
+    const { data } = await supabase
+      .from("document_signatures")
+      .select("*");
+    if (data) {
+      const mapped: Record<string, SignedDocument> = {};
+      for (const sig of data) {
+        mapped[sig.document_id] = {
+          signedAt: sig.signed_at,
+          signerName: sig.signer_name || "Desconocido",
+          reason: sig.signature_data || undefined,
+          id: sig.id,
+        };
+      }
+      setSignedDocuments(mapped);
+    }
+  }, [profile?.company_id]);
+
   const fetchDocuments = useCallback(async () => {
     if (!profile?.company_id) return;
     const { data, error } = await supabase
@@ -155,7 +188,8 @@ export function DocumentsView({
 
   useEffect(() => {
     fetchDocuments();
-  }, [fetchDocuments]);
+    fetchSignatures();
+  }, [fetchDocuments, fetchSignatures]);
 
   const allDocuments = useMemo(() => [...dbDocuments], [dbDocuments]);
 
@@ -357,18 +391,49 @@ export function DocumentsView({
     setIsSignOpen(true);
   };
 
-  const handleStartSigning = () => {
+  const handleStartSigning = async () => {
+    if (!selectedDocument) return;
     setSignStatus("waiting");
     toast({
-      title: "Firma en proceso",
-      description: "Conecta el lector DNIe y autoriza la firma en AutoFirma.",
+      title: "Invocando AutoFirma",
+      description: "Se abrirá AutoFirma para firmar con tu DNIe. Asegúrate de tener el lector conectado.",
     });
+
+    try {
+      if (selectedDocument.fileUrl && !selectedDocument.fileUrl.startsWith("/docs/")) {
+        const { data: urlData, error } = await supabase.storage
+          .from("documents")
+          .createSignedUrl(selectedDocument.fileUrl, 120);
+        
+        if (!error && urlData?.signedUrl) {
+          const response = await fetch(urlData.signedUrl);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = (reader.result as string).split(",")[1] || "";
+            const afirmaUrl = buildAutoFirmaUrl(base64, `${selectedDocument.code}.${selectedDocument.format}`);
+            window.location.href = afirmaUrl;
+          };
+          reader.readAsDataURL(blob);
+          return;
+        }
+      }
+      // Fallback without file data
+      const afirmaUrl = buildAutoFirmaUrl("", `${selectedDocument.code}.${selectedDocument.format}`);
+      window.location.href = afirmaUrl;
+    } catch (err) {
+      console.error("Error invoking AutoFirma:", err);
+      toast({
+        title: "Error al invocar AutoFirma",
+        description: "Asegúrate de tener AutoFirma instalada. Puedes descargarla desde firmaelectronica.gob.es",
+        variant: "destructive",
+      });
+      setSignStatus("idle");
+    }
   };
 
-  const handleCompleteSigning = (file: File) => {
-    if (!selectedDocument) {
-      return;
-    }
+  const handleCompleteSigning = async (file?: File) => {
+    if (!selectedDocument || !user) return;
     if (!signerName.trim()) {
       toast({
         title: "Falta el firmante",
@@ -377,7 +442,24 @@ export function DocumentsView({
       });
       return;
     }
+
     const signedAt = new Date().toISOString();
+    
+    const { error } = await supabase.from("document_signatures").insert({
+      document_id: selectedDocument.id,
+      signed_by: user.id,
+      signer_name: signerName.trim(),
+      signer_email: user.email || null,
+      signature_method: "autofirma_dnie",
+      signature_data: signReason.trim() || null,
+      signed_at: signedAt,
+    });
+
+    if (error) {
+      toast({ title: "Error al registrar firma", description: error.message, variant: "destructive" });
+      return;
+    }
+
     setSignedDocuments((prev) => ({
       ...prev,
       [selectedDocument.id]: {
@@ -390,32 +472,31 @@ export function DocumentsView({
     setSignStatus("completed");
     toast({
       title: "Documento firmado",
-      description: `${selectedDocument?.code ?? "El documento"} ha sido firmado con DNIe.`,
+      description: `${selectedDocument.code} ha sido firmado con DNIe por ${signerName.trim()}.`,
     });
   };
 
   const handleSignedFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
     handleCompleteSigning(file);
   };
 
-  const handleDownloadForSigning = (doc: Document) => {
-    const content = `Documento: ${doc.title}\nCódigo: ${doc.code}\nVersión: ${doc.version}\nFormato: ${doc.format.toUpperCase()}\n`;
-    const mimeTypes: Record<Document["format"], string> = {
-      pdf: "application/pdf",
-      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    };
-    const blob = new Blob([content], { type: mimeTypes[doc.format] });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${doc.code}-para-firmar.${doc.format}`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const handleDownloadForSigning = async (doc: Document) => {
+    if (doc.fileUrl && !doc.fileUrl.startsWith("/docs/")) {
+      const { data, error } = await supabase.storage
+        .from("documents")
+        .createSignedUrl(doc.fileUrl, 60);
+      if (!error && data?.signedUrl) {
+        const link = document.createElement("a");
+        link.href = data.signedUrl;
+        link.download = `${doc.code}-para-firmar.${doc.format}`;
+        link.target = "_blank";
+        link.click();
+        return;
+      }
+    }
+    toast({ title: "Sin archivo", description: "Este documento no tiene un archivo asociado.", variant: "destructive" });
   };
 
   return (
@@ -905,14 +986,29 @@ export function DocumentsView({
             <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground space-y-2">
               <p className="font-medium text-foreground">Estado de la firma</p>
               {signStatus === "idle" && (
-                <p>
-                  Descarga el documento, fírmalo con AutoFirma y sube el archivo firmado para completar el proceso.
-                </p>
+                <div className="space-y-2">
+                  <p>
+                    Haz clic en "Iniciar firma con DNIe" para invocar AutoFirma. Necesitarás el lector y tu DNIe insertado.
+                  </p>
+                  <p className="text-xs">
+                    ¿No tienes AutoFirma?{" "}
+                    <a
+                      href="https://firmaelectronica.gob.es/Home/Descargas.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent underline"
+                    >
+                      Descárgala aquí
+                    </a>
+                  </p>
+                </div>
               )}
               {signStatus === "waiting" && (
-                <p>
-                  Esperando confirmación del DNIe... Autoriza la operación en AutoFirma y vuelve a esta pantalla.
-                </p>
+                <div className="space-y-2">
+                  <p>
+                    AutoFirma ha sido invocada. Autoriza la operación con tu DNIe y luego sube el archivo firmado o haz clic en "Confirmar firma".
+                  </p>
+                </div>
               )}
               {signStatus === "completed" && (
                 <div className="space-y-1 text-success">
@@ -934,18 +1030,27 @@ export function DocumentsView({
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
-                onClick={handleStartSigning}
-                disabled={signStatus !== "idle"}
-              >
-                Iniciar firma
-              </Button>
-              <Button
-                variant="outline"
                 onClick={() => selectedDocument && handleDownloadForSigning(selectedDocument)}
-                disabled={!selectedDocument}
+                disabled={!selectedDocument || signStatus === "completed"}
               >
                 Descargar para firmar
               </Button>
+              <Button
+                variant="accent"
+                onClick={handleStartSigning}
+                disabled={signStatus !== "idle"}
+              >
+                Iniciar firma con DNIe
+              </Button>
+              {signStatus === "waiting" && (
+                <Button
+                  variant="success"
+                  onClick={() => handleCompleteSigning()}
+                  disabled={!signerName.trim()}
+                >
+                  Confirmar firma
+                </Button>
+              )}
             </div>
           </DialogFooter>
         </DialogContent>
