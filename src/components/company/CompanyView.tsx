@@ -52,7 +52,7 @@ const mockInvoices = [
 ];
 
 export function CompanyView() {
-  const { profile } = useAuth();
+  const { isAdmin, isRootAdmin } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("perfil");
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
@@ -68,9 +68,6 @@ export function CompanyView() {
   });
   const [passwordForm, setPasswordForm] = useState({ newPassword: "", confirmPassword: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isAdmin = Boolean(profile?.is_admin);
-  const isRootAdmin = Boolean(profile?.is_root_admin);
-
   const fetchUsers = useCallback(async () => {
     const { data, error } = await supabase
       .from("user_directory")
@@ -138,7 +135,7 @@ export function CompanyView() {
         email: createForm.email,
         password: createForm.password,
         full_name: createForm.fullName,
-        roles: [createForm.role],
+        role: createForm.role,
       },
     });
     setIsSubmitting(false);

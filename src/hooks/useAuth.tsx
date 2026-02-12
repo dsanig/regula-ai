@@ -16,7 +16,10 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  isAdmin: boolean;
+  isRootAdmin: boolean;
   isLoading: boolean;
+  refreshPermissions: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -26,19 +29,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isRootAdmin, setIsRootAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadProfile = async (userId: string) => {
       try {
-        const { data } = await supabase
+        const [{ data }, { data: adminRole }, { data: rootAdmin }] = await Promise.all([
+          supabase
           .from("profiles")
           .select("*")
           .eq("user_id", userId)
-          .single();
+          .single(),
+          supabase.rpc("has_role", { _user_id: userId, _role: "Administrador" }),
+          supabase.rpc("is_root_admin", { uid: userId }),
+        ]);
+
         setProfile(data as Profile | null);
+        setIsAdmin(Boolean(adminRole));
+        setIsRootAdmin(Boolean(rootAdmin));
       } catch {
         setProfile(null);
+        setIsAdmin(false);
+        setIsRootAdmin(false);
       }
     };
 
@@ -51,6 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void loadProfile(nextSession.user.id);
       } else {
         setProfile(null);
+        setIsAdmin(false);
+        setIsRootAdmin(false);
       }
     };
 
@@ -86,10 +102,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
+    setIsAdmin(false);
+    setIsRootAdmin(false);
+  };
+
+  const refreshPermissions = async () => {
+    if (!user) {
+      setIsAdmin(false);
+      setIsRootAdmin(false);
+      return;
+    }
+
+    const [{ data: adminRole }, { data: rootAdmin }] = await Promise.all([
+      supabase.rpc("has_role", { _user_id: user.id, _role: "Administrador" }),
+      supabase.rpc("is_root_admin", { uid: user.id }),
+    ]);
+
+    setIsAdmin(Boolean(adminRole));
+    setIsRootAdmin(Boolean(rootAdmin));
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, isLoading, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, isAdmin, isRootAdmin, isLoading, refreshPermissions, signOut }}>
       {children}
     </AuthContext.Provider>
   );

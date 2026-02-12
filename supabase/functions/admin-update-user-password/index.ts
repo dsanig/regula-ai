@@ -60,7 +60,7 @@ serve(async (req) => {
     const { data: callerProfile, error: callerProfileError } = await serviceClient
       .from("profiles")
       .select("is_root_admin")
-      .eq("user_id", caller.id)
+      .or(`user_id.eq.${caller.id},id.eq.${caller.id}`)
       .single();
 
     if (callerProfileError || !callerProfile?.is_root_admin) {

@@ -126,7 +126,7 @@ export function DocumentsView({
   const [signerName, setSignerName] = useState("");
   const [signedDocuments, setSignedDocuments] = useState<Record<string, SignedDocument>>({});
   const { toast } = useToast();
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin: authIsAdmin, refreshPermissions } = useAuth();
 
   // New document form state
   const [newDocCode, setNewDocCode] = useState("");
@@ -223,17 +223,19 @@ export function DocumentsView({
 
   const fetchAdminStatus = useCallback(async () => {
     if (!user) {
+      console.info("[documents.upload] Disabled upload: no authenticated user in context.");
       setIsAdmin(false);
       return false;
     }
 
     const { data, error } = await supabase
-      .rpc("is_admin", { uid: user.id });
+      .rpc("has_role", { _user_id: user.id, _role: "Administrador" });
 
     if (error) {
       console.error("[documents.upload] Failed to evaluate admin status", {
         stage: "auth.admin_check",
         userId: user.id,
+        userEmail: user.email,
         message: error.message,
         code: error.code,
         details: error.details,
@@ -245,6 +247,13 @@ export function DocumentsView({
     }
 
     const nextIsAdmin = Boolean(data);
+    console.info("[documents.upload] role resolution", {
+      userId: user.id,
+      userEmail: user.email,
+      role: "Administrador",
+      hasRole: nextIsAdmin,
+      disabledReason: nextIsAdmin ? null : "missing Administrador role",
+    });
     setIsAdmin(nextIsAdmin);
     return nextIsAdmin;
   }, [user]);
@@ -255,8 +264,9 @@ export function DocumentsView({
   }, [fetchDocuments, fetchSignatures]);
 
   useEffect(() => {
+    void refreshPermissions();
     fetchAdminStatus();
-  }, [fetchAdminStatus]);
+  }, [fetchAdminStatus, refreshPermissions]);
 
   const allDocuments = useMemo(() => [...dbDocuments], [dbDocuments]);
 
@@ -654,8 +664,8 @@ export function DocumentsView({
           <Button
             variant="accent"
             onClick={() => onNewDocumentOpenChange(true)}
-            disabled={!isAdmin}
-            title={isAdmin ? undefined : "Solo los usuarios con rol Administrador pueden subir documentos."}
+            disabled={!isAdmin || !authIsAdmin}
+            title={isAdmin && authIsAdmin ? undefined : "Solo los usuarios con rol Administrador pueden subir documentos."}
           >
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Documento
@@ -1314,8 +1324,8 @@ export function DocumentsView({
             </Button>
             <Button
               variant="accent"
-              disabled={isUploading || !isAdmin}
-              title={isAdmin ? undefined : "Solo los usuarios con rol Administrador pueden subir documentos."}
+              disabled={isUploading || !isAdmin || !authIsAdmin}
+              title={isAdmin && authIsAdmin ? undefined : "Solo los usuarios con rol Administrador pueden subir documentos."}
               onClick={handleUploadDocument}
             >
               {isUploading ? "Subiendo..." : "Guardar"}
