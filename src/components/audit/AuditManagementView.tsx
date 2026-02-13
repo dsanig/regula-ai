@@ -81,10 +81,13 @@ export function AuditManagementView() {
   const selectedAudit = audits.find((audit) => audit.id === selectedAuditId) ?? null;
 
   const createAudit = async () => {
+    const { data: profileData } = await supabase.from("profiles").select("company_id").eq("user_id", (await supabase.auth.getUser()).data.user?.id ?? "").maybeSingle();
     const { error } = await (supabase as any).from("audits").insert({
       title: auditForm.title,
       description: auditForm.description || null,
       audit_date: auditForm.audit_date || null,
+      company_id: profileData?.company_id,
+      created_by: (await supabase.auth.getUser()).data.user?.id,
     });
 
     if (error) {
