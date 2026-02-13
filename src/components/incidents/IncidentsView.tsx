@@ -84,13 +84,16 @@ export function IncidentsView({
   const { toast } = useToast();
 
   const loadData = async () => {
+    const { data: profileData } = await supabase.from("profiles").select("company_id").eq("user_id", (await supabase.auth.getUser()).data.user?.id ?? "").maybeSingle();
+    const companyId = profileData?.company_id;
+
     const [{ data: incidenciasData, error: incidenciasError }, { data: auditsData }, { data: usersData }] = await Promise.all([
       (supabase as any)
         .from("incidencias")
         .select("id,title,description,incidencia_type,audit_id,responsible_id,status,created_at")
         .order("created_at", { ascending: false }),
       (supabase as any).from("audits").select("id,title").order("created_at", { ascending: false }),
-      (supabase as any).from("profiles").select("id,full_name,email"),
+      supabase.from("profiles").select("user_id,full_name,email"),
     ]);
 
     if (incidenciasError) {
@@ -100,7 +103,7 @@ export function IncidentsView({
 
     setIncidents((incidenciasData ?? []) as Incident[]);
     setAudits((auditsData ?? []) as AuditRef[]);
-    setUsers((usersData ?? []) as UserRef[]);
+    setUsers((usersData ?? []).map((u) => ({ id: u.user_id, full_name: u.full_name, email: u.email })) as UserRef[]);
   };
 
   useEffect(() => {
@@ -117,6 +120,7 @@ export function IncidentsView({
   }, [incidents, searchQuery, filters.incidentStatus]);
 
   const createIncident = async () => {
+    const { data: profileData } = await supabase.from("profiles").select("company_id").eq("user_id", (await supabase.auth.getUser()).data.user?.id ?? "").maybeSingle();
     const { error } = await (supabase as any).from("incidencias").insert({
       title: form.title,
       description: form.description || null,
@@ -124,6 +128,8 @@ export function IncidentsView({
       audit_id: form.audit_id === "none" ? null : form.audit_id,
       responsible_id: form.responsible_id === "none" ? null : form.responsible_id,
       status: form.status,
+      company_id: profileData?.company_id,
+      created_by: (await supabase.auth.getUser()).data.user?.id,
     });
 
     if (error) {

@@ -14,8 +14,7 @@ interface Profile {
   email: string;
   full_name: string | null;
   company_id: string | null;
-  is_admin: boolean;
-  is_root_admin: boolean;
+  is_superadmin: boolean;
 }
 
 interface AuthContextType {
@@ -40,35 +39,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const readIsSuperadmin = async (userId: string) => {
-    const candidates = [
-      () => rpcClient.rpc("is_superadmin", { uid: userId }),
-      () => rpcClient.rpc("is_root_admin", { uid: userId }),
-    ];
-
-    for (const call of candidates) {
-      const { data, error } = await call();
-      if (!error) {
-        return Boolean(data);
-      }
-    }
-
+    const { data, error } = await rpcClient.rpc("is_superadmin", { uid: userId });
+    if (!error) return Boolean(data);
     return false;
   };
 
   const readIsAdministrador = async (userId: string) => {
-    const candidates = [
-      () => rpcClient.rpc("has_role", { uid: userId, r: "Administrador" }),
-      () => rpcClient.rpc("has_role", { _user_id: userId, _role: "Administrador" }),
-      () => rpcClient.rpc("is_admin", { uid: userId }),
-    ];
-
-    for (const call of candidates) {
-      const { data, error } = await call();
-      if (!error) {
-        return Boolean(data);
-      }
-    }
-
+    const { data, error } = await rpcClient.rpc("has_role", { _user_id: userId, _role: "Administrador" });
+    if (!error) return Boolean(data);
     return false;
   };
 
@@ -85,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           readIsSuperadmin(userId),
         ]);
 
-        setProfile((data as Profile | null) ?? null);
+        setProfile((data as unknown as Profile | null) ?? null);
         setIsAdmin(adminRole || superadminRole);
         setIsRootAdmin(superadminRole);
       } catch {

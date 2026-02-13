@@ -69,7 +69,7 @@ export function CompanyView() {
   const [passwordForm, setPasswordForm] = useState({ newPassword: "", confirmPassword: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fetchUsers = useCallback(async () => {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("user_directory")
       .select("id, email, full_name, role, is_superadmin, created_at")
       .order("created_at", { ascending: false });

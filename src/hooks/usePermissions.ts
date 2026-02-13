@@ -25,38 +25,6 @@ export function usePermissions(): PermissionsState {
   const [isAdministrador, setIsAdministrador] = useState(false);
   const [isEditor, setIsEditor] = useState(false);
 
-  const readRole = useCallback(async (userId: string, role: "Administrador" | "Editor") => {
-    const candidates = [
-      () => rpcClient.rpc("has_role", { uid: userId, r: role }),
-      () => rpcClient.rpc("has_role", { _user_id: userId, _role: role }),
-    ];
-
-    for (const call of candidates) {
-      const { data, error } = await call();
-      if (!error) {
-        return Boolean(data);
-      }
-    }
-
-    return false;
-  }, []);
-
-  const readIsSuperadmin = useCallback(async (userId: string) => {
-    const candidates = [
-      () => rpcClient.rpc("is_superadmin", { uid: userId }),
-      () => rpcClient.rpc("is_root_admin", { uid: userId }),
-    ];
-
-    for (const call of candidates) {
-      const { data, error } = await call();
-      if (!error) {
-        return Boolean(data);
-      }
-    }
-
-    return false;
-  }, []);
-
   const refreshPermissions = useCallback(async () => {
     setIsLoading(true);
 
@@ -75,17 +43,17 @@ export function usePermissions(): PermissionsState {
 
     const userId = session.user.id;
 
-    const [superadminResult, adminResult, editorResult] = await Promise.all([
-      readIsSuperadmin(userId),
-      readRole(userId, "Administrador"),
-      readRole(userId, "Editor"),
+    const [superRes, adminRes, editorRes] = await Promise.all([
+      rpcClient.rpc("is_superadmin", { uid: userId }),
+      rpcClient.rpc("has_role", { _user_id: userId, _role: "Administrador" }),
+      rpcClient.rpc("has_role", { _user_id: userId, _role: "Editor" }),
     ]);
 
-    setIsSuperadmin(superadminResult);
-    setIsAdministrador(adminResult);
-    setIsEditor(editorResult);
+    setIsSuperadmin(!superRes.error && Boolean(superRes.data));
+    setIsAdministrador(!adminRes.error && Boolean(adminRes.data));
+    setIsEditor(!editorRes.error && Boolean(editorRes.data));
     setIsLoading(false);
-  }, [readIsSuperadmin, readRole]);
+  }, []);
 
   useEffect(() => {
     void refreshPermissions();

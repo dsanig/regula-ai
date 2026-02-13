@@ -169,30 +169,14 @@ export function DocumentsView({
       .eq("company_id", profile.company_id)
       .order("created_at", { ascending: false });
     if (!error && data) {
-      const uploaderProfileIds = [...new Set(data.map((doc) => doc.uploaded_by).filter(Boolean))];
       const ownerUserIds = [...new Set(data.map((doc) => doc.owner_id).filter(Boolean))];
 
-      const [{ data: uploadersData }, { data: ownersData }] = await Promise.all([
-        uploaderProfileIds.length
-          ? supabase
-              .from("profiles")
-              .select("id, full_name, email")
-              .in("id", uploaderProfileIds)
-          : Promise.resolve({ data: [] }),
-        ownerUserIds.length
-          ? supabase
-              .from("profiles")
-              .select("user_id, full_name, email")
-              .in("user_id", ownerUserIds)
-          : Promise.resolve({ data: [] }),
-      ]);
-
-      const uploaderMap = new Map(
-        (uploadersData || []).map((owner) => [
-          owner.id,
-          owner.full_name?.trim() || owner.email || owner.id,
-        ])
-      );
+      const { data: ownersData } = ownerUserIds.length
+        ? await supabase
+            .from("profiles")
+            .select("user_id, full_name, email")
+            .in("user_id", ownerUserIds)
+        : { data: [] };
 
       const ownerUserMap = new Map(
         (ownersData || []).map((owner) => [
@@ -210,13 +194,13 @@ export function DocumentsView({
         version: String(d.version) + ".0",
         status: d.status as Document["status"],
         lastUpdated: new Date(d.updated_at).toISOString().split("T")[0],
-        owner: uploaderMap.get(d.uploaded_by) || ownerUserMap.get(d.owner_id) || d.owner_id,
-        ownerId: d.uploaded_by || d.owner_id,
+        owner: ownerUserMap.get(d.owner_id) || d.owner_id,
+        ownerId: d.owner_id,
         pageCount: 0,
         format: (d.file_type || "pdf") as Document["format"],
-        originalAuthor: uploaderMap.get(d.uploaded_by) || ownerUserMap.get(d.owner_id) || d.owner_id,
-        lastModifiedBy: uploaderMap.get(d.uploaded_by) || ownerUserMap.get(d.owner_id) || d.owner_id,
-        fileUrl: d.object_path || d.file_url,
+        originalAuthor: ownerUserMap.get(d.owner_id) || d.owner_id,
+        lastModifiedBy: ownerUserMap.get(d.owner_id) || d.owner_id,
+        fileUrl: d.file_url,
       }));
       setDbDocuments(mapped);
     }
@@ -304,10 +288,6 @@ export function DocumentsView({
         category: newDocCategory.charAt(0).toUpperCase() + newDocCategory.slice(1),
         company_id: profile.company_id,
         owner_id: uploaderUser.id,
-        uploaded_by: uploaderUser.id,
-        uploaded_by_email: uploaderUser.email ?? null,
-        bucket_id: "documents",
-        object_path: filePath,
         file_type: fileExt,
         file_url: filePath,
         status: "draft" as const,
@@ -424,7 +404,7 @@ export function DocumentsView({
 
   const handleDownload = async (doc: Document) => {
     const signedDoc = signedDocuments[doc.id];
-    if (signedDoc) {
+    if (signedDoc?.file) {
       const url = URL.createObjectURL(signedDoc.file);
       const link = document.createElement("a");
       link.href = url;

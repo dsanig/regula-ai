@@ -14,6 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_attachments: {
+        Row: {
+          action_id: string
+          bucket_id: string
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          id: string
+          object_path: string
+        }
+        Insert: {
+          action_id: string
+          bucket_id?: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          object_path: string
+        }
+        Update: {
+          action_id?: string
+          bucket_id?: string
+          created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          id?: string
+          object_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_attachments_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      actions: {
+        Row: {
+          action_type: string
+          created_at: string
+          description: string
+          due_date: string | null
+          id: string
+          non_conformity_id: string
+          responsible_id: string | null
+          status: string
+        }
+        Insert: {
+          action_type?: string
+          created_at?: string
+          description: string
+          due_date?: string | null
+          id?: string
+          non_conformity_id: string
+          responsible_id?: string | null
+          status?: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          non_conformity_id?: string
+          responsible_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "actions_non_conformity_id_fkey"
+            columns: ["non_conformity_id"]
+            isOneToOne: false
+            referencedRelation: "non_conformities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_findings: {
         Row: {
           affected_area: string | null
@@ -126,6 +205,79 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audits: {
+        Row: {
+          audit_date: string | null
+          auditor_id: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          status: string
+          title: string
+        }
+        Insert: {
+          audit_date?: string | null
+          auditor_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          status?: string
+          title: string
+        }
+        Update: {
+          audit_date?: string | null
+          auditor_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audits_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      capa_plans: {
+        Row: {
+          audit_id: string
+          created_at: string
+          description: string | null
+          id: string
+        }
+        Insert: {
+          audit_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+        }
+        Update: {
+          audit_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capa_plans_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "audits"
             referencedColumns: ["id"]
           },
         ]
@@ -363,6 +515,101 @@ export type Database = {
           },
         ]
       }
+      incidencias: {
+        Row: {
+          audit_id: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          incidencia_type: string
+          responsible_id: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          audit_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          incidencia_type?: string
+          responsible_id?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          audit_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          incidencia_type?: string
+          responsible_id?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidencias_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incidencias_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      non_conformities: {
+        Row: {
+          capa_plan_id: string
+          created_at: string
+          description: string | null
+          id: string
+          root_cause: string | null
+          severity: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          capa_plan_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          root_cause?: string | null
+          severity?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          capa_plan_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          root_cause?: string | null
+          severity?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "non_conformities_capa_plan_id_fkey"
+            columns: ["capa_plan_id"]
+            isOneToOne: false
+            referencedRelation: "capa_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -508,6 +755,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          is_superadmin: boolean
           updated_at: string
           user_id: string
         }
@@ -518,6 +766,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id?: string
+          is_superadmin?: boolean
           updated_at?: string
           user_id: string
         }
@@ -528,6 +777,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          is_superadmin?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -698,9 +948,21 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_directory: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          is_superadmin: boolean | null
+          role: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      can_edit_content: { Args: { uid: string }; Returns: boolean }
+      can_manage_company: { Args: { uid: string }; Returns: boolean }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -709,6 +971,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_superadmin: { Args: { uid: string }; Returns: boolean }
     }
     Enums: {
       app_role:
@@ -717,6 +980,9 @@ export type Database = {
         | "quality_tech"
         | "regulatory"
         | "viewer"
+        | "Administrador"
+        | "Editor"
+        | "Espectador"
       document_status: "draft" | "review" | "approved" | "obsolete" | "archived"
       subscription_tier: "free" | "professional" | "excellence"
     }
@@ -852,6 +1118,9 @@ export const Constants = {
         "quality_tech",
         "regulatory",
         "viewer",
+        "Administrador",
+        "Editor",
+        "Espectador",
       ],
       document_status: ["draft", "review", "approved", "obsolete", "archived"],
       subscription_tier: ["free", "professional", "excellence"],
